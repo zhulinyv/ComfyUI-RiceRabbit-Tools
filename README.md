@@ -4,6 +4,19 @@ ComfyUI 自定义节点：提示词编辑（自动补全 + 标签化窗口 + wil
 图片对比（节点内手动切图预览 + 滑动分割线逐像素对比），以及分辨率 / 日期 / 文本拼接 / 任意类型选择等小工具。
 卡片库与提示词库可直接复用 [Auto-NovelAI-Refactor](https://github.com/zhulinyv/Auto-NovelAI-Refactor) 的现有数据。
 
+## 安装
+
+```bash
+cd ComfyUI/custom_nodes
+git clone https://github.com/zhulinyv/ComfyUI-RiceRabbit-Tools.git
+```
+
+重启 ComfyUI 即可，**没有额外 pip 依赖**（只用 ComfyUI 自带的 `requests` / `Pillow` / `numpy`）。
+
+- 节点在菜单里的分类是 `RiceRabbit`，搜 `RiceRabbit` 就能找到全部节点
+- 更新：`cd ComfyUI-RiceRabbit-Tools && git pull`，然后重启
+- `data/` 目录（翻译缓存、分辨率预设、回收站）会在首次运行时自动创建，不随仓库分发
+
 ## 节点
 
 **🍚 提示词 (RiceRabbit)** · `RiceRabbitPrompt`
