@@ -147,7 +147,7 @@ function applyRecords(node, records, { persist = true, names = null } = {}) {
 
   const entries = usable.map((rec, index) => {
     // 恢复 workflow 时 records 里已经带好了 label, 直接用
-    const base = (names && names[index]) || rec.label || `图片 ${index + 1}`;
+    const base = (names && names[index]) || rec.label || `Image ${index + 1}`;
     const multi = perSlot.get(rec.slot) > 1 && !/\s#\d+$/.test(base);
     const label = multi ? `${base} #${(rec.batch ?? 0) + 1}` : base;
 
@@ -291,9 +291,9 @@ function drawPanel(ctx, node) {
   const hovering = node.__rrHover && inRect(node.__rrHover, L.img);
 
   if (!list.length) {
-    drawPlaceholder(ctx, "还没有图片\n执行一次队列后显示所有图片类型的 Get", L.img.x, L.img.y, L.img.w, L.img.h);
+    drawPlaceholder(ctx, "No images yet\nRun the queue to collect every IMAGE-typed Get", L.img.x, L.img.y, L.img.w, L.img.h);
   } else if (!image || !image.naturalWidth) {
-    drawPlaceholder(ctx, entry?.broken ? "图片已失效\n重新执行一次" : "图片加载中…", L.img.x, L.img.y, L.img.w, L.img.h);
+    drawPlaceholder(ctx, entry?.broken ? "Image expired\nRun the queue again" : "Loading image…", L.img.x, L.img.y, L.img.w, L.img.h);
   } else {
     // contain: 保持原始宽高比
     const scale = Math.min(L.img.w / image.naturalWidth, L.img.h / image.naturalHeight);
@@ -349,7 +349,7 @@ function drawSwitchBar(ctx, rect, node, list, index, hot) {
   drawArrow(prev, "◀", canSwitch, node.__rrHoverArrow === -1);
   drawArrow(next, "▶", canSwitch, node.__rrHoverArrow === 1);
 
-  const label = total ? `${index + 1}/${total} · ${list[index]?.label || "图片"}` : "暂无图片";
+  const label = total ? `${index + 1}/${total} · ${list[index]?.label || "Image"}` : "No images";
   ctx.fillStyle = "rgba(232, 236, 244, 0.92)";
   const maxW = rect.w - arrowW * 2 - 8;
   let shown = label;
@@ -373,7 +373,7 @@ function drawOpenButton(ctx, rect, hot) {
   ctx.fillStyle = hot ? "rgba(255, 255, 255, 0.98)" : "rgba(226, 236, 255, 0.9)";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("🔍 打开对比窗口", rect.x + rect.w / 2, rect.y + rect.h / 2 + 0.5);
+  ctx.fillText("🔍 Open compare window", rect.x + rect.w / 2, rect.y + rect.h / 2 + 0.5);
   ctx.restore();
 }
 
@@ -396,7 +396,7 @@ const OPEN_CLASS = "rr-cmp-overlay";
 function openCompareWindow(node) {
   const images = (node.__rrImages || []).filter((entry) => entry && entry.url);
   if (!images.length) {
-    toast("还没有图片: 先加图片类型的 Get, 再执行一次队列", "warn");
+    toast("No images yet: add an IMAGE-typed Get, then run the queue", "warn");
     return;
   }
   // 同一个工作流只留一个对比窗口
@@ -410,12 +410,12 @@ function openCompareWindow(node) {
   const overlay = el("div", { class: `rr-overlay ${OPEN_CLASS} ${themeClass()}` });
   const box = el("div", { class: "rr-modal rr-cmp" });
 
-  const closeBtn = el("button", { class: "rr-btn rr-danger", type: "button", text: "✖ 关闭" });
+  const closeBtn = el("button", { class: "rr-btn rr-danger", type: "button", text: "✖ Close" });
   const head = el("div", { class: "rr-head" }, [
-    el("div", { class: "rr-title", text: "🍚 图片对比" }),
-    el("span", { class: "rr-sub", text: `${images.length} 张 · 节点 #${node.id ?? "-"}` }),
+    el("div", { class: "rr-title", text: "🍚 Image Compare" }),
+    el("span", { class: "rr-sub", text: `${images.length} image(s) · node #${node.id ?? "-"}` }),
     el("div", { class: "rr-spacer" }),
-    el("span", { class: "rr-hint", text: "画面里左右移动鼠标即移动分割线" }),
+    el("span", { class: "rr-hint", text: "Move the mouse across the image to move the divider" }),
     closeBtn,
   ]);
 
@@ -424,7 +424,7 @@ function openCompareWindow(node) {
   const listBox = el("div", { class: "rr-cmp-list" });
   const side = el("div", { class: "rr-cmp-side" }, [
     el("div", { class: "rr-cmp-side-head" }, [
-      el("span", { class: "rr-label", text: "📚 全部图片" }),
+      el("span", { class: "rr-label", text: "📚 All images" }),
       el("div", { class: "rr-spacer" }),
       el("span", { class: "rr-hint", text: String(images.length) }),
     ]),
@@ -435,16 +435,16 @@ function openCompareWindow(node) {
     const thumb = el("img", { class: "rr-cmp-thumb", src: image.url, alt: "", loading: "lazy" });
     const name = el("div", {
       class: "rr-cmp-name",
-      text: image.label || `图片 ${index + 1}`,
+      text: image.label || `Image ${index + 1}`,
       title: image.label || "",
     });
     const meta = el("div", {
       class: "rr-cmp-dim",
       text: `${image.width || "?"}×${image.height || "?"}`,
     });
-    const pickA = el("button", { class: "rr-cmp-pick rr-pick-a", type: "button", text: "A", title: "设为左图" });
-    const pickB = el("button", { class: "rr-cmp-pick rr-pick-b", type: "button", text: "B", title: "设为右图" });
-    const row = el("div", { class: "rr-cmp-item", title: "单击设为右图, 双击设为左图" }, [
+    const pickA = el("button", { class: "rr-cmp-pick rr-pick-a", type: "button", text: "A", title: "Set as left image" });
+    const pickB = el("button", { class: "rr-cmp-pick rr-pick-b", type: "button", text: "B", title: "Set as right image" });
+    const row = el("div", { class: "rr-cmp-item", title: "Click to set as right image, double-click for left" }, [
       el("span", { class: "rr-cmp-no", text: String(index + 1) }),
       thumb,
       el("div", { class: "rr-cmp-meta" }, [name, meta]),
@@ -471,27 +471,27 @@ function openCompareWindow(node) {
 
   // ---------------- 右侧: 对比区 ----------------
 
-  const selA = el("select", { class: "rr-cmp-select", title: "左图 (分割线左侧显示)" });
-  const selB = el("select", { class: "rr-cmp-select", title: "右图 (分割线右侧显示)" });
+  const selA = el("select", { class: "rr-cmp-select", title: "Left image (shown left of the divider)" });
+  const selB = el("select", { class: "rr-cmp-select", title: "Right image (shown right of the divider)" });
   for (const [index, image] of images.entries()) {
-    const text = `${index + 1}. ${image.label || "图片"}`;
+    const text = `${index + 1}. ${image.label || "Image"}`;
     selA.append(el("option", { value: String(index), text }));
     selB.append(el("option", { value: String(index), text }));
   }
 
-  const swapBtn = el("button", { class: "rr-btn", type: "button", text: "⇄", title: "交换左右" });
-  const lockBtn = el("button", { class: "rr-btn rr-on", type: "button", text: "🖱 跟随鼠标" });
+  const swapBtn = el("button", { class: "rr-btn", type: "button", text: "⇄", title: "Swap sides" });
+  const lockBtn = el("button", { class: "rr-btn rr-on", type: "button", text: "🖱 Follow cursor" });
   const resetBtn = el("button", {
     class: "rr-btn",
     type: "button",
-    text: "↺ 重置视图",
-    title: "恢复 100% 并回到中心（也可以直接按 R 键）",
+    text: "↺ Reset view",
+    title: "Back to 100% and centered (or press R)",
   });
   const bar = el("div", { class: "rr-cmp-bar" }, [
-    el("span", { class: "rr-cmp-key rr-key-a", text: "左" }),
+    el("span", { class: "rr-cmp-key rr-key-a", text: "L" }),
     selA,
     swapBtn,
-    el("span", { class: "rr-cmp-key rr-key-b", text: "右" }),
+    el("span", { class: "rr-cmp-key rr-key-b", text: "R" }),
     selB,
     el("div", { class: "rr-spacer" }),
     lockBtn,
@@ -577,8 +577,8 @@ function openCompareWindow(node) {
     const b = images[idxB];
     if (imgA.getAttribute("src") !== a.url) imgA.src = a.url;
     if (imgB.getAttribute("src") !== b.url) imgB.src = b.url;
-    tagA.textContent = `A · ${idxA + 1}. ${a.label || "图片"}`;
-    tagB.textContent = `B · ${idxB + 1}. ${b.label || "图片"}`;
+    tagA.textContent = `A · ${idxA + 1}. ${a.label || "Image"}`;
+    tagB.textContent = `B · ${idxB + 1}. ${b.label || "Image"}`;
     rows.forEach((row, index) => {
       row.el.classList.toggle("rr-is-a", index === idxA);
       row.el.classList.toggle("rr-is-b", index === idxB);
@@ -724,7 +724,7 @@ function openCompareWindow(node) {
   lockBtn.addEventListener("click", () => {
     follow = !follow;
     lockBtn.classList.toggle("rr-on", follow);
-    lockBtn.textContent = follow ? "🖱 跟随鼠标" : "📌 位置已锁定";
+    lockBtn.textContent = follow ? "🖱 Follow cursor" : "📌 Position locked";
   });
 
   resetBtn.addEventListener("click", resetView);
@@ -802,7 +802,7 @@ function patchGraphToPrompt() {
         pendingNames.set(String(node.id), gets.map((item) => item.name));
       }
     } catch (error) {
-      console.warn("[RiceRabbit] 注入图片输入失败", error);
+      console.warn("[RiceRabbit] Failed to inject image inputs", error);
     }
     return result;
   };
@@ -847,7 +847,7 @@ function setupNode(node) {
     try {
       drawPanel(ctx, this);
     } catch (error) {
-      console.warn("[RiceRabbit] 绘制图片预览失败", error);
+      console.warn("[RiceRabbit] Failed to draw the preview", error);
     }
   };
 
@@ -918,7 +918,7 @@ function setupNode(node) {
       applyRecords(target, records, { names });
       pendingNames.delete(String(target.id));
     } catch (error) {
-      console.error("[RiceRabbit] 应用对比图片失败", error);
+      console.error("[RiceRabbit] Failed to apply compare images", error);
     }
   };
 }
@@ -935,7 +935,7 @@ app.registerExtension({
       try {
         setupNode(this);
       } catch (error) {
-        console.error("[RiceRabbit] 图片对比节点初始化失败", error);
+        console.error("[RiceRabbit] Image Compare node init failed", error);
       }
       return result;
     };
@@ -955,7 +955,7 @@ app.registerExtension({
         }
         restoreFromProperties(this);
       } catch (error) {
-        console.warn("[RiceRabbit] 恢复图片对比节点失败", error);
+        console.warn("[RiceRabbit] Failed to restore the Image Compare node", error);
       }
       return result;
     };
@@ -968,7 +968,7 @@ app.registerExtension({
     try {
       setupNode(node);
     } catch (error) {
-      console.error("[RiceRabbit] 图片对比节点初始化失败", error);
+      console.error("[RiceRabbit] Image Compare node init failed", error);
     }
   },
 
@@ -1003,7 +1003,7 @@ function scanNodes() {
         persistImages(node, images);
       }
     } catch (error) {
-      console.error("[RiceRabbit] 图片对比节点初始化失败", error);
+      console.error("[RiceRabbit] Image Compare node init failed", error);
     }
   }
 }

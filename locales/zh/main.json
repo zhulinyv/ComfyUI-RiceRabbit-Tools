@@ -1,0 +1,166 @@
+{
+    "nodeDefs": {
+        "RiceRabbitPrompt": {
+            "display_name": "🍚 提示词 (RiceRabbit)",
+            "description": "提示词节点: 拼接上游文本, 展开 <分类:卡片> wildcard, 格式化后输出文本; 接了 CLIP 还可以编码成 conditioning。",
+            "inputs": {
+                "prompt": {
+                    "name": "提示词",
+                    "tooltip": "节点自己的提示词。输入时会给出标签自动补全, 右下角按钮可打开标签化编辑窗口"
+                },
+                "seed": {
+                    "name": "种子",
+                    "tooltip": "随机/顺序的抽取种子: 可接 KSampler 的 seed。种子不变时不会重新抽取 (保证同种子可复现)"
+                },
+                "format": {
+                    "name": "格式化",
+                    "tooltip": "整理多余的空格与逗号 (规则同 Auto-NovelAI-Refactor)"
+                },
+                "separator": {
+                    "name": "分隔符",
+                    "tooltip": "拼接上游 text 与节点提示词时用的分隔符"
+                },
+                "clip": {
+                    "name": "CLIP",
+                    "tooltip": "可选。接上就把提示词编码成 conditioning; 不接则只用 text 输出 (conditioning 为空)"
+                },
+                "text": {
+                    "name": "上游文本",
+                    "tooltip": "可选的上游文本, 会用分隔符拼在节点提示词前面"
+                }
+            },
+            "outputs": {
+                "text": {
+                    "name": "文本",
+                    "tooltip": "最终用于编码的提示词 (已拼接 / 展开 wildcard / 格式化)"
+                },
+                "conditioning": {
+                    "name": "条件",
+                    "tooltip": "编码后的条件, 可直接接入 KSampler; 没接 CLIP 时为空"
+                }
+            }
+        },
+        "RiceRabbitResolution": {
+            "display_name": "🍚 分辨率 (RiceRabbit)",
+            "description": "分辨率选择: 预设下拉 + 手动宽高。手填的组合会在执行后自动加入预设。",
+            "inputs": {
+                "preset": {
+                    "name": "预设",
+                    "tooltip": "选一个预设会自动填到下面的宽高; 手动改宽高会切成对应的预设或「自定义」"
+                },
+                "width": {
+                    "name": "宽度",
+                    "tooltip": "实际输出的宽度; 手填的组合在生成后会存进预设"
+                },
+                "height": {
+                    "name": "高度",
+                    "tooltip": "实际输出的高度"
+                }
+            },
+            "outputs": {
+                "width": { "name": "宽度", "tooltip": "宽度" },
+                "height": { "name": "高度", "tooltip": "高度" }
+            }
+        },
+        "RiceRabbitDate": {
+            "display_name": "🍚 日期 (RiceRabbit)",
+            "description": "输出当天日期 (YYYYMMDD)。",
+            "outputs": {
+                "date": { "name": "日期", "tooltip": "YYYYMMDD 格式的日期, 例如 20261030" }
+            }
+        },
+        "RiceRabbitIntToString": {
+            "display_name": "🍚 整数→文本 (RiceRabbit)",
+            "description": "把 INT 转成 STRING, 方便拼进文件名 / 路径 / 提示词。",
+            "inputs": {
+                "value": {
+                    "name": "整数",
+                    "tooltip": "可以连上游的 INT 输出, 也可以直接填数字"
+                }
+            },
+            "outputs": {
+                "text": { "name": "文本", "tooltip": "整数转成的十进制文本" }
+            }
+        },
+        "RiceRabbitConcat": {
+            "display_name": "🍚 文本拼接 (RiceRabbit)",
+            "description": "文本拼接: 多个 STRING 按顺序用分隔符连起来, 接上下一个输入框会自动出现。",
+            "inputs": {
+                "separator": {
+                    "name": "分隔符",
+                    "tooltip": "拼接时插入在每两段之间的字符串, 留空则直接相连"
+                },
+                "text1": { "name": "文本 1", "tooltip": "第一段文本 (必填)" }
+            },
+            "outputs": {
+                "text": { "name": "文本", "tooltip": "按 text1, text2, ... 顺序拼接后的文本" }
+            }
+        },
+        "RiceRabbitAnySwitch": {
+            "display_name": "🍚 任意类型选择 (RiceRabbit)",
+            "description": "任意类型选择: 接多个输入, 只输出第一个非空的那个; 接上第二个输入后会自动出现第三个输入槽。",
+            "inputs": {
+                "input1": {
+                    "name": "输入 1",
+                    "tooltip": "任意类型。空值会被跳过, 只输出第一个有内容的输入"
+                }
+            },
+            "outputs": {
+                "value": { "name": "值", "tooltip": "第一个有内容的输入, 原样输出 (类型跟随上游)" }
+            }
+        },
+        "RiceRabbitExistential": {
+            "display_name": "🍚 存在性判断 (RiceRabbit)",
+            "description": "存在性判断: 任意类型输入有值输出 True, 没接或值为 None 输出 False。",
+            "inputs": {
+                "value": {
+                    "name": "输入",
+                    "tooltip": "任意类型。只判断有没有值: 没接线或上游给 None 就是 False"
+                }
+            },
+            "outputs": {
+                "exists": { "name": "存在", "tooltip": "有值 True; 没接或值为 None 时 False" }
+            }
+        },
+        "RiceRabbitFormatText": {
+            "display_name": "🧹 格式化文本 (RiceRabbit)",
+            "description": "格式化文本: 清理多余的逗号与空格, 换行结构保持不变。",
+            "inputs": {
+                "text": { "name": "文本", "tooltip": "要格式化的提示词" }
+            },
+            "outputs": {
+                "text": { "name": "文本", "tooltip": "格式化后的文本" }
+            }
+        },
+        "RiceRabbitSetNode": {
+            "display_name": "🍚 变量写入 Set (RiceRabbit)",
+            "description": "变量写入 (虚拟节点, 不参与执行): 把上游存成变量, 同名 Get 节点随处取用。",
+            "inputs": {
+                "*": { "name": "任意值", "tooltip": "接任意上游; 变量名填在节点上的输入框里" }
+            }
+        },
+        "RiceRabbitGetNode": {
+            "display_name": "🍚 变量读取 Get (RiceRabbit)",
+            "description": "变量读取 (虚拟节点, 不参与执行): 从同名的 Set 节点取上游的值。",
+            "inputs": {
+                "Variable name": {
+                    "name": "变量名",
+                    "tooltip": "要读取的变量名 (下拉里是所有可用的 Set)"
+                }
+            }
+        },
+        "RiceRabbitImageCompare": {
+            "display_name": "🍚 图片对比 (RiceRabbit)",
+            "description": "图片查看 / 对比: 不需要接线, 自动收集图里所有「图片类型」的 Get 变量 (按 Get 节点在图上的位置从上到下排), 节点内手动切图预览, 按钮打开窗口可用滑动分割线逐像素对比任意两张。",
+            "inputs": {
+                "image1": {
+                    "name": "图片 1",
+                    "tooltip": "自动收集的第 1 张图 (由前端按 Get 顺序注入)"
+                }
+            }
+        }
+    },
+    "nodeCategories": {
+        "RiceRabbit": "RiceRabbit"
+    }
+}

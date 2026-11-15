@@ -93,7 +93,7 @@ def _request(method: str, url: str, **kw):
             return resp, sess
         except Exception as exc:  # noqa: BLE001 - 换连接方式重试
             last = exc
-    raise last if last is not None else RuntimeError("翻译请求失败")
+    raise last if last is not None else RuntimeError("Translation request failed")
 
 
 def _google(text: str) -> str:
@@ -106,7 +106,7 @@ def _google(text: str) -> str:
     parts = [seg[0] for seg in (data[0] or []) if seg and seg[0]]
     out = "".join(parts).strip()
     if not out:
-        raise RuntimeError("Google 返回空结果")
+        raise RuntimeError("Google returned an empty result")
     return out
 
 
@@ -118,7 +118,7 @@ def _mymemory(text: str) -> str:
     )
     out = str(resp.json().get("responseData", {}).get("translatedText") or "").strip()
     if not out or "MYMEMORY WARNING" in out.upper() or "EXCEEDED" in out.upper():
-        raise RuntimeError("MyMemory 未返回有效译文")
+        raise RuntimeError("MyMemory returned no valid translation")
     return out
 
 
@@ -126,7 +126,7 @@ def _bing(text: str) -> str:
     resp, sess = _request("GET", "https://cn.bing.com/translator")
     match = re.search(r'IG:"([0-9A-Fa-f]{8,})"', resp.text)
     if not match:
-        raise RuntimeError("Bing 页面未找到 IG token")
+        raise RuntimeError("Bing page has no IG token")
     url = f"https://cn.bing.com/ttranslatev3?isVertical=1&&IG={match.group(1)}&IID=translator.5028"
     payload = {"fromLang": "en", "text": text, "to": "zh-Hans", "token": "", "key": ""}
     resp2 = sess.post(url, data=payload, timeout=_TIMEOUT_SLOW)
@@ -136,7 +136,7 @@ def _bing(text: str) -> str:
         out = str(data[0]["translations"][0].get("text") or "").strip()
         if out:
             return out
-    raise RuntimeError("Bing 返回异常")
+    raise RuntimeError("Bing returned an error")
 
 
 def _baidu(text: str) -> str:
@@ -152,7 +152,7 @@ def _baidu(text: str) -> str:
         out = str(data["data"][0].get("dst") or "").strip()
         if out:
             return out
-    raise RuntimeError("百度返回异常")
+    raise RuntimeError("Baidu returned an error")
 
 
 _PROVIDERS = [

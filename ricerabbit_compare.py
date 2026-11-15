@@ -89,7 +89,7 @@ class RiceRabbitImageCompare:
         for i in range(1, MAX_COMPARE_INPUTS + 1):
             optional[f"image{i}"] = (
                 "IMAGE",
-                {"tooltip": f"自动收集的第 {i} 张图 (由前端按 Get 顺序注入)"},
+                {"tooltip": f"Auto-collected image {i} (injected by the frontend in Get order)"},
             )
         return {
             "required": {},
@@ -102,9 +102,9 @@ class RiceRabbitImageCompare:
     FUNCTION = "run"
     CATEGORY = CATEGORY
     DESCRIPTION = (
-        "图片查看 / 对比: 不需要接线, 自动收集图里所有「图片类型」的 Get 变量 "
-        "(按 Get 节点在图上的位置从上到下排), 节点内手动切图预览, "
-        "按钮打开窗口可用滑动分割线逐像素对比任意两张。"
+        "Image viewer / compare: no wiring needed, it collects every IMAGE-typed Get variable "
+        "(ordered by where the Get nodes sit on the canvas). Switch images inside the node, "
+        "or open the compare window for a draggable split divider and wheel zoom."
     )
 
     def run(self, unique_id=None, **kwargs):
@@ -129,7 +129,7 @@ class RiceRabbitImageCompare:
                     pil = _to_pil(frame)
                 except Exception as exc:  # noqa: BLE001 - 单张坏掉不该拖垮整次执行
                     print(
-                        f"[RiceRabbit] 图片对比: {slot} 第 {b + 1} 张转换失败 ({exc}), 跳过"
+                        f"[RiceRabbit] Image Compare: failed to convert {slot} image {b + 1} ({exc}), skipped"
                     )
                     continue
 
@@ -150,7 +150,7 @@ class RiceRabbitImageCompare:
 
         label = f"#{unique_id}" if unique_id is not None else ""
         print(
-            f"[RiceRabbit] 图片对比 {label}: 收录 {len(records)} 张 ({', '.join(summary) or '无'})"
+            f"[RiceRabbit] Image Compare {label}: collected {len(records)} image(s) ({', '.join(summary) or 'none'})"
         )
 
         # 前端 onExecuted 收到 message.rr_images; 顺序 = 输入顺序 + batch 内顺序
@@ -162,5 +162,5 @@ COMPARE_NODE_CLASS_MAPPINGS = {
 }
 
 COMPARE_NODE_DISPLAY_NAME_MAPPINGS = {
-    "RiceRabbitImageCompare": "🍚 图片对比 (RiceRabbit)",
+    "RiceRabbitImageCompare": "🍚 Image Compare (RiceRabbit)",
 }

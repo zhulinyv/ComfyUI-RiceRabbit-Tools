@@ -16,34 +16,34 @@ const SETTING_PROMPT_LIB = "RiceRabbit.PromptLibraryPath";
 const SETTINGS = [
   {
     id: SETTING_ANR,
-    name: "Auto-NovelAI-Refactor 目录",
+    name: "Auto-NovelAI-Refactor directory",
     type: "text",
     defaultValue: "",
-    category: ["RiceRabbit", "ANR 目录"],
+    category: ["RiceRabbit", "ANR directory"],
     tooltip:
-      "填 Auto-NovelAI-Refactor 项目的根目录 (例如 D:\\GitClone\\Auto-NovelAI-Refactor)。\n" +
-      "配置后本节点自动读取它的卡片库 (data/state/wildcards) 与提示词库 (data/state/prompt_library.json), " +
-      "标签词典也一起复用。留空则使用下面两个单独的配置。",
+      "Root folder of your Auto-NovelAI-Refactor checkout (e.g. D:\\GitClone\\Auto-NovelAI-Refactor).\n" +
+      "When set, the card library (data/state/wildcards) and prompt library (data/state/prompt_library.json) " +
+      "are read from there, and its tag dictionary is reused. Leave empty to use the two settings below.",
   },
   {
     id: SETTING_WILDCARDS,
-    name: "Wildcards 卡片库目录",
+    name: "Wildcards card library folder",
     type: "text",
     defaultValue: "",
-    category: ["RiceRabbit", "卡片库"],
+    category: ["RiceRabbit", "Card library"],
     tooltip:
-      "卡片库根目录, 结构为 <分类>/<卡片名>.txt。\n" +
-      "默认是插件目录下的 wildcards/; 上面的 ANR 目录有效时以 ANR 的卡片库为准。",
+      "Root folder of the card library, laid out as <category>/<card>.txt.\n" +
+      "Defaults to wildcards/ inside this plugin; when the ANR directory above is set, that one wins.",
   },
   {
     id: SETTING_PROMPT_LIB,
-    name: "提示词库文件",
+    name: "Prompt library file",
     type: "text",
     defaultValue: "",
-    category: ["RiceRabbit", "提示词库"],
+    category: ["RiceRabbit", "Prompt library"],
     tooltip:
-      "提示词库 json 文件路径, 格式 [{\"text\": \"标签\", \"category\": \"分类\"}]。\n" +
-      "默认是插件目录下的 prompts/prompt_library.json; 上面的 ANR 目录有效时以 ANR 的提示词库为准。",
+      "Path to the prompt library json, shaped like [{\"text\": \"tag\", \"category\": \"group\"}].\n" +
+      "Defaults to prompts/prompt_library.json inside this plugin; when the ANR directory above is set, that one wins.",
   },
 ];
 
@@ -51,7 +51,7 @@ function setSetting(id, value) {
   try {
     app.ui.settings.setSettingValue(id, value);
   } catch (e) {
-    console.warn("[RiceRabbit] 写入设置失败", id, e);
+    console.warn("[RiceRabbit] Failed to write setting", id, e);
   }
 }
 
@@ -69,7 +69,7 @@ function registerSettings(retries = 15) {
       setTimeout(() => registerSettings(retries - 1), 200);
       return;
     }
-    console.warn("[RiceRabbit] app.ui.settings 不可用, 设置项未注册");
+    console.warn("[RiceRabbit] app.ui.settings unavailable, settings not registered");
     return;
   }
   const failed = [];
@@ -78,10 +78,10 @@ function registerSettings(retries = 15) {
       app.ui.settings.addSetting(item);
     } catch (e) {
       failed.push(item.id);
-      console.warn("[RiceRabbit] 注册设置失败:", item.id, e);
+      console.warn("[RiceRabbit] Failed to register setting:", item.id, e);
     }
   }
-  if (failed.length) console.warn("[RiceRabbit] 未注册成功的设置项:", failed.join(", "));
+  if (failed.length) console.warn("[RiceRabbit] Settings that failed to register:", failed.join(", "));
 }
 
 /**
@@ -109,7 +109,7 @@ async function initDefaultPaths() {
     writeDefaultIfRegistered(SETTING_WILDCARDS, cfg.default_wildcards || "");
     writeDefaultIfRegistered(SETTING_PROMPT_LIB, cfg.default_prompt_lib || "");
   } catch (e) {
-    console.warn("[RiceRabbit] 读取库配置失败", e);
+    console.warn("[RiceRabbit] Failed to read library config", e);
   }
 }
 
@@ -136,7 +136,7 @@ function attachAutocomplete(textarea) {
   if (!textarea || textarea.__rrAC) return;
   textarea.__rrAC = wireAutocomplete(textarea, { comma: true });
   textarea.setAttribute('spellcheck', 'false');
-  textarea.placeholder = '输入提示词, 支持 <分类:卡片> 通配符; 打字有标签补全, 下面按钮可打开标签化窗口';
+  textarea.placeholder = 'Type a prompt, <category:card> wildcards supported; tags autocomplete as you type, the button below opens the tag editor';
 }
 
 /**
@@ -221,13 +221,13 @@ function setupPromptNode(node) {
   const sepWidget = node.widgets?.find((w) => w.name === "separator");
 
   if (promptWidget) {
-    promptWidget.label = "提示词";
+    promptWidget.label = "Prompt";
     // 补全由 document 上的 focusin 委托负责 (见 attachAutocomplete),
     // 这里不再按节点去认领 textarea —— 多节点时认领错就会串内容。
   }
 
-  if (sepWidget) sepWidget.label = "分隔符";
-  if (formatWidget) formatWidget.label = "格式化提示词";
+  if (sepWidget) sepWidget.label = "Separator";
+  if (formatWidget) formatWidget.label = "Format prompt";
   // format / separator 由后端的 "advanced": True 交给 ComfyUI 自己折叠 ——
   // 与 KSampler (Advanced) 完全同一套机制 (节点底部出现 "Show advanced inputs"),
   // 这里不要再手工隐藏, 否则会和官方的折叠区打架。
@@ -235,7 +235,7 @@ function setupPromptNode(node) {
   const openModal = () => {
     try {
       openTagModal({
-        title: "节点提示词",
+        title: "Node prompt",
         getValue: () => promptWidget?.value ?? "",
         setValue: (value) => {
           if (!promptWidget) return;
@@ -253,11 +253,11 @@ function setupPromptNode(node) {
         },
       });
     } catch (e) {
-      toast("打开标签窗口失败: " + e.message, "error");
+      toast("Failed to open the tag window: " + e.message, "error");
     }
   };
 
-  addButton(node, "🃏 标签化提示词", openModal, 28);
+  addButton(node, "🃏 Tag Prompt", openModal, 28);
 
   // 新建节点时给个合适的初始尺寸 (加载已有 workflow 时 onNodeCreated 不会再跑, 用户的尺寸保留)
   if (!node.__rrSized) {
@@ -287,9 +287,9 @@ function setupResolutionNode(node) {
   const height = node.widgets?.find((w) => w.name === "height");
   if (!preset || !width || !height) return;
 
-  preset.label = "预设";
-  width.label = "宽度";
-  height.label = "高度";
+  preset.label = "Preset";
+  width.label = "Width";
+  height.label = "Height";
 
   let syncing = false;
 
@@ -306,7 +306,7 @@ function setupResolutionNode(node) {
   const matchPreset = () => {
     const key = `${width.value}x${height.value}`;
     const values = preset.options?.values || [];
-    const hit = values.includes(key) ? key : "自定义";
+    const hit = values.includes(key) ? key : "Custom";
     if (preset.value === hit) return;
     syncing = true;
     preset.value = hit;
@@ -340,14 +340,14 @@ async function refreshResolutionPresets() {
   } catch {
     return;
   }
-  const values = ["自定义", ...(data.presets || [])];
+  const values = ["Custom", ...(data.presets || [])];
   for (const node of app.graph?._nodes || []) {
     if (node.type !== "RiceRabbitResolution" && node.comfyClass !== "RiceRabbitResolution") continue;
     const widget = node.widgets?.find((w) => w.name === "preset");
     if (!widget) continue;
     widget.options = widget.options || {};
     widget.options.values = values;
-    if (!values.includes(widget.value)) widget.value = "自定义";
+    if (!values.includes(widget.value)) widget.value = "Custom";
     node.setDirtyCanvas(true, true);
   }
 }
@@ -398,7 +398,7 @@ function syncConcatInputs(node) {
     }
     node.setDirtyCanvas(true, true);
   } catch (e) {
-    console.warn("[RiceRabbit] 同步拼接输入失败", e);
+    console.warn("[RiceRabbit] Failed to sync concat inputs", e);
   } finally {
     node.__rrSyncing = false;
   }
@@ -409,7 +409,7 @@ function setupConcatNode(node) {
   node.__rrConcat = true;
 
   const sep = node.widgets?.find((w) => w.name === "separator");
-  if (sep) sep.label = "分隔符";
+  if (sep) sep.label = "Separator";
 
   syncConcatInputs(node);
 
@@ -434,7 +434,7 @@ app.registerExtension({
   async setup() {
     // 设置项逐项手动注册 (不依赖 settings 数组), 然后再补默认路径
     registerSettings();
-    console.info("[RiceRabbit] 设置项: " + SETTINGS.map((s) => s.id).join(" | "));
+    console.info("[RiceRabbit] Settings: " + SETTINGS.map((s) => s.id).join(" | "));
     setTimeout(() => {
       initDefaultPaths();
     }, 500);
@@ -445,7 +445,7 @@ app.registerExtension({
         refreshResolutionPresets();
       });
     } catch (e) {
-      console.warn("[RiceRabbit] 监听执行完成失败", e);
+      console.warn("[RiceRabbit] Failed to hook execution_success", e);
     }
   },
 
@@ -457,7 +457,7 @@ app.registerExtension({
         try {
           setupConcatNode(this);
         } catch (e) {
-          console.error("[RiceRabbit] 拼接节点初始化失败", e);
+          console.error("[RiceRabbit] Concat node init failed", e);
         }
         return result;
       };
@@ -480,7 +480,7 @@ app.registerExtension({
         try {
           setupResolutionNode(this);
         } catch (e) {
-          console.error("[RiceRabbit] 分辨率节点初始化失败", e);
+          console.error("[RiceRabbit] Resolution node init failed", e);
         }
         return result;
       };
@@ -495,7 +495,7 @@ app.registerExtension({
       try {
         setupPromptNode(this);
       } catch (e) {
-        console.error("[RiceRabbit] 节点初始化失败", e);
+        console.error("[RiceRabbit] Node init failed", e);
       }
       return result;
     };

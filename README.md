@@ -16,6 +16,8 @@ git clone https://github.com/zhulinyv/ComfyUI-RiceRabbit-Tools.git
 - 节点在菜单里的分类是 `RiceRabbit`，搜 `RiceRabbit` 就能找到全部节点
 - 更新：`cd ComfyUI-RiceRabbit-Tools && git pull`，然后重启
 - `data/` 目录（翻译缓存、分辨率预设、回收站）会在首次运行时自动创建，不随仓库分发
+- **界面语言**：节点名、tooltip、面板按钮全部是英文；中文翻译放在 `locales/zh/main.json`，
+  由 ComfyUI 的 `/i18n` 机制加载 —— 把 ComfyUI 语言切成中文就是中文界面，切成英文就是英文界面
 
 ## 节点
 

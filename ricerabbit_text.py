@@ -28,8 +28,13 @@ _WILDCARD_TOKEN = re.compile(r"<[ \t]*([^:<>\r\n]+?)[ \t]*:[ \t]*([^<>\r\n]+?)[ 
 _MAX_ROUNDS = 50
 
 # 特殊卡片名 (分类级操作, 不是真实文件名)
-_KEY_RANDOM = "随机"
-_KEY_SEQUENTIAL = "顺序"
+# 分类级操作的关键字. 老版本写的是中文, 老工作流里已经存在的
+# <分类:随机> / <分类:顺序> 必须继续能用, 所以解析时两种写法都认.
+KEY_RANDOM = "random"
+KEY_SEQUENTIAL = "sequential"
+_LEGACY_KEYS = {"随机": KEY_RANDOM, "顺序": KEY_SEQUENTIAL}
+_KEY_RANDOM = KEY_RANDOM
+_KEY_SEQUENTIAL = KEY_SEQUENTIAL
 
 _TXT_EXTS = (".txt",)
 
@@ -134,10 +139,44 @@ def join_prompt(text_input: str, prompt: str, separator: str = ",") -> str:
 # ---------------------------------------------------------------- wildcard
 
 
+def _safe_part(value: str) -> str | None:
+    """One path segment of a wildcard name; None when it could escape the root."""
+    name = (value or "").strip()
+    if not name or name in (".", ".."):
+        return None
+    if any(ch in name for ch in ("/", "\\", ":", "\x00")):
+        return None
+    return name
+
+
+def safe_child(root: Path, *parts: str) -> Path | None:
+    """Join parts under root, refusing anything that would step outside it.
+
+    Wildcard markers are user input (a prompt, or POST /ricerabbit/expand),
+    so both the category and the card name have to be treated as hostile:
+    reject separators and "..", then verify the resolved path is still a
+    descendant of the root.
+    """
+    cleaned = []
+    for part in parts:
+        value = _safe_part(part)
+        if value is None:
+            return None
+        cleaned.append(value)
+    try:
+        base = root.resolve()
+        path = base.joinpath(*cleaned).resolve()
+    except (OSError, ValueError):
+        return None
+    if path == base:
+        return path if not cleaned else None
+    return path if path.is_relative_to(base) else None
+
+
 def _list_cards(root: Path, category: str) -> list[str]:
     """分类下的卡片名 (不含扩展名), 按文件名排序。"""
-    path = root / category
-    if not path.is_dir():
+    path = safe_child(root, category)
+    if path is None or not path.is_dir():
         return []
     try:
         names = [f for f in os.listdir(path) if f.lower().endswith(_TXT_EXTS)]
@@ -147,7 +186,9 @@ def _list_cards(root: Path, category: str) -> list[str]:
 
 
 def _read_card(root: Path, category: str, name: str) -> str:
-    path = root / category / f"{name}.txt"
+    path = safe_child(root, category, f"{name}.txt")
+    if path is None:
+        return ""
     # 编码容错: 老卡片可能是 GBK, 读不出来也不该让整次生成失败
     for encoding in ("utf-8-sig", "utf-8", "gbk"):
         try:
@@ -237,7 +278,8 @@ def replace_wildcards(
             after = text[match.end() :].lstrip()
             needs_comma = bool(after) and after[0] not in (",", "，")
             try:
-                if name == _KEY_RANDOM:
+                action = _LEGACY_KEYS.get(name, name)
+                if action == _KEY_RANDOM:
                     names = _list_cards(root, category)
                     if not names:
                         raise FileNotFoundError(category)
@@ -245,7 +287,7 @@ def replace_wildcards(
                         card = random.choice(names)
                     else:
                         card = random.Random(f"{seed}:{category}:r:{idx}").choice(names)
-                elif name == _KEY_SEQUENTIAL:
+                elif action == _KEY_SEQUENTIAL:
                     card = _next_sequential(root, category)
                     if not card:
                         raise FileNotFoundError(category)

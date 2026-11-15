@@ -120,7 +120,7 @@ def _save_cover(payload: dict) -> dict:
     name = payload.get("name", "")
     data_url = str(payload.get("data") or "")
     if not data_url:
-        raise ValueError("没有收到图片数据")
+        raise ValueError("No image data received")
 
     ext = ".png"
     if data_url.startswith("data:"):
@@ -138,11 +138,11 @@ def _save_cover(payload: dict) -> dict:
     try:
         raw = base64.b64decode(data_url, validate=False)
     except Exception as exc:  # noqa: BLE001
-        raise ValueError(f"图片数据无法解析: {exc}") from exc
+        raise ValueError(f"Could not parse image data: {exc}") from exc
     if not raw:
-        raise ValueError("图片内容为空")
+        raise ValueError("Image data is empty")
     if len(raw) > MAX_COVER_BYTES:
-        raise ValueError(f"图片太大 ({len(raw) // 1024 // 1024}MB), 请控制在 8MB 以内")
+        raise ValueError(f"Image too large ({len(raw) // 1024 // 1024} MB), please keep it under 8 MB")
 
     lib.save_cover(category, name, raw, ext)
     return {"ok": True, "cards": lib.list_cards(category)}
@@ -181,14 +181,14 @@ def _register(routes) -> None:
         try:
             return _json(await asyncio.to_thread(_config_payload))
         except Exception as exc:  # noqa: BLE001
-            return _error(f"读取配置失败: {exc}", 500)
+            return _error(f"Failed to read config: {exc}", 500)
 
     @routes.post(f"{PREFIX}/refresh")
     async def rr_refresh(request):
         try:
             return _json(await asyncio.to_thread(_refresh_payload))
         except Exception as exc:  # noqa: BLE001
-            return _error(f"刷新失败: {exc}", 500)
+            return _error(f"Refresh failed: {exc}", 500)
 
     # ---- 卡片库
 
@@ -198,7 +198,7 @@ def _register(routes) -> None:
             types = await asyncio.to_thread(lib.list_types)
             return _json({"types": types, "root": str(lib.wildcard_root())})
         except Exception as exc:  # noqa: BLE001
-            return _error(f"读取卡片库失败: {exc}", 500)
+            return _error(f"Failed to read card library: {exc}", 500)
 
     @routes.get(f"{PREFIX}/wildcards/{{category}}")
     async def rr_cards(request):
@@ -207,7 +207,7 @@ def _register(routes) -> None:
             cards = await asyncio.to_thread(lib.list_cards, category)
             return _json({"type": category, "cards": cards})
         except Exception as exc:  # noqa: BLE001
-            return _error(f"读取卡片失败: {exc}", 500)
+            return _error(f"Failed to read card: {exc}", 500)
 
     @routes.get(f"{PREFIX}/wildcards/{{category}}/{{name}}")
     async def rr_card(request):
@@ -221,7 +221,7 @@ def _register(routes) -> None:
         except ValueError as exc:
             return _error(exc, 400)
         except Exception as exc:  # noqa: BLE001
-            return _error(f"读取卡片失败: {exc}", 500)
+            return _error(f"Failed to read card: {exc}", 500)
 
     @routes.post(f"{PREFIX}/wildcards/save")
     async def rr_save_card(request):
@@ -288,7 +288,7 @@ def _register(routes) -> None:
         except ValueError:
             path = None
         if path is None:
-            return _error("封面不存在", 404)
+            return _error("Cover not found", 404)
         return web.FileResponse(path)
 
     # ---- 提示词库
@@ -298,7 +298,7 @@ def _register(routes) -> None:
         try:
             return _json(await asyncio.to_thread(_prompts_payload))
         except Exception as exc:  # noqa: BLE001
-            return _error(f"读取提示词库失败: {exc}", 500)
+            return _error(f"Failed to read prompt library: {exc}", 500)
 
     @routes.post(f"{PREFIX}/prompts/add")
     async def rr_prompt_add(request):
@@ -313,7 +313,7 @@ def _register(routes) -> None:
         except ValueError as exc:
             return _error(exc, 400)
         except OSError as exc:
-            return _error(f"保存失败: {exc}", 500)
+            return _error(f"Save failed: {exc}", 500)
 
     @routes.post(f"{PREFIX}/prompts/delete")
     async def rr_prompt_delete(request):
@@ -322,7 +322,7 @@ def _register(routes) -> None:
             items = await asyncio.to_thread(lib.delete_prompt, payload.get("text", ""))
             return _json({"ok": True, "items": items})
         except OSError as exc:
-            return _error(f"删除失败: {exc}", 500)
+            return _error(f"Delete failed: {exc}", 500)
 
     # ---- 补全 / 翻译
 
@@ -338,21 +338,21 @@ def _register(routes) -> None:
             items = await asyncio.to_thread(tags.suggest, keyword, limit)
             return _json({"keyword": keyword, "items": items})
         except Exception as exc:  # noqa: BLE001
-            return _error(f"补全失败: {exc}", 500)
+            return _error(f"Autocomplete failed: {exc}", 500)
 
     @routes.post(f"{PREFIX}/translate")
     async def rr_translate(request):
         payload = await _payload(request)
         items = payload.get("tags") or []
         if not isinstance(items, list):
-            return _error("tags 必须是数组", 400)
+            return _error("`tags` must be an array", 400)
         cleaned = [str(t) for t in items if str(t).strip()][:200]
         if not cleaned:
             return _json({"translations": {}})
         try:
             return _json({"translations": await asyncio.to_thread(tr.translate_many, cleaned)})
         except Exception as exc:  # noqa: BLE001
-            return _error(f"翻译失败: {exc}", 500)
+            return _error(f"Translation failed: {exc}", 500)
 
     @routes.post(f"{PREFIX}/expand")
     async def rr_expand(request):
@@ -368,7 +368,7 @@ def _register(routes) -> None:
             items = await asyncio.to_thread(presets.labels)
             return _json({"presets": items, "custom": presets.CUSTOM_LABEL})
         except Exception as exc:  # noqa: BLE001
-            return _error(f"读取分辨率预设失败: {exc}", 500)
+            return _error(f"Failed to read resolution presets: {exc}", 500)
 
 
 def register() -> bool:

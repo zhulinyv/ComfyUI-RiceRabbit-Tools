@@ -115,9 +115,9 @@ const zhKey = (text) => (text || "").trim().toLowerCase().replace(/\s+/g, "_");
  * @param {{getValue: () => string, setValue: (v: string) => void, title?: string}} options
  */
 export function openTagModal(options = {}) {
-  const { getValue, setValue, title = "提示词" } = options;
+  const { getValue, setValue, title = "Prompt" } = options;
   if (typeof getValue !== "function" || typeof setValue !== "function") {
-    throw new Error("openTagModal 需要 getValue/setValue");
+    throw new Error("openTagModal requires getValue/setValue");
   }
 
   const initial = getValue() ?? "";
@@ -146,45 +146,45 @@ export function openTagModal(options = {}) {
   const overlay = el("div", { class: `rr-overlay ${themeClass()}` });
   const box = el("div", { class: "rr-modal" });
 
-  const titleEl = el("div", { class: "rr-title", text: "🃏 标签化提示词" });
+  const titleEl = el("div", { class: "rr-title", text: "🃏 Tag Prompt" });
   const subEl = el("span", { class: "rr-sub", text: title });
-  const closeBtn = el("button", { class: "rr-btn rr-danger", type: "button", text: "✖ 关闭" });
+  const closeBtn = el("button", { class: "rr-btn rr-danger", type: "button", text: "✖ Close" });
 
   const chipsView = el("div", { class: "rr-chips" });
-  const textarea = el("textarea", { class: "rr-ta", spellcheck: "false", placeholder: "在此输入提示词..." });
+  const textarea = el("textarea", { class: "rr-ta", spellcheck: "false", placeholder: "Type a prompt here..." });
   textarea.value = text;
   const editor = el("div", { class: "rr-editor" }, [chipsView, textarea]);
 
   const weightBtn = el("button", {
     class: "rr-btn",
     type: "button",
-    title: "切换权重写法:\n通用权重 (标签:1.5)\nNAI 新版权重 1.5::标签::",
+    title: "Switch weight syntax:\nGeneric (tag:1.5)\nNAI v3 1.5::tag::",
   });
-  const addSelBtn = el("button", { class: "rr-btn rr-primary", type: "button", text: "➕ 添加选中", disabled: true });
-  const clearSelBtn = el("button", { class: "rr-btn", type: "button", text: "✖ 清除选择", disabled: true });
-  const translateBtn = el("button", { class: "rr-btn", type: "button", text: "🌐 翻译" });
-  const modeBtn = el("button", { class: "rr-btn", type: "button", text: "✏️ 文本编辑" });
+  const addSelBtn = el("button", { class: "rr-btn rr-primary", type: "button", text: "➕ Add selected", disabled: true });
+  const clearSelBtn = el("button", { class: "rr-btn", type: "button", text: "✖ Clear selection", disabled: true });
+  const translateBtn = el("button", { class: "rr-btn", type: "button", text: "🌐 Translate" });
+  const modeBtn = el("button", { class: "rr-btn", type: "button", text: "✏️ Text editor" });
 
   const promptHead = el("div", { class: "rr-prompt-head" }, [
     el("span", { class: "rr-label", text: "📝 " + title }),
-    el("span", { class: "rr-hint", text: "改动实时同步回节点" }),
+    el("span", { class: "rr-hint", text: "Changes sync back to the node live" }),
     el("div", { class: "rr-spacer" }),
     weightBtn, addSelBtn, clearSelBtn, translateBtn, modeBtn,
   ]);
 
   const promptSec = el("div", { class: "rr-prompt" }, [promptHead, editor]);
 
-  const tabCards = el("button", { class: "rr-tab rr-active", type: "button", text: "🃏 卡片库" });
-  const tabPrompts = el("button", { class: "rr-tab", type: "button", text: "💬 提示词库" });
+  const tabCards = el("button", { class: "rr-tab rr-active", type: "button", text: "🃏 Card library" });
+  const tabPrompts = el("button", { class: "rr-tab", type: "button", text: "💬 Prompt library" });
   const libInfo = el("span", { class: "rr-hint", text: "" });
-  const newCardBtn = el("button", { class: "rr-btn", type: "button", text: "＋ 新建卡片" });
-  const newCatBtn = el("button", { class: "rr-btn", type: "button", text: "＋ 分类" });
-  const favBtn = el("button", { class: "rr-btn", type: "button", text: "＋ 收藏提示词", style: { display: "none" } });
+  const newCardBtn = el("button", { class: "rr-btn", type: "button", text: "＋ New card" });
+  const newCatBtn = el("button", { class: "rr-btn", type: "button", text: "＋ Category" });
+  const favBtn = el("button", { class: "rr-btn", type: "button", text: "＋ Save prompt", style: { display: "none" } });
   const refreshBtn = el("button", {
     class: "rr-btn",
     type: "button",
-    text: "🔄 刷新",
-    title: "重新读取卡片库与提示词库（在设置里换过目录之后点一下）",
+    text: "🔄 Refresh",
+    title: "Reload the card and prompt libraries (click after changing folders in settings)",
   });
   const tabs = el("div", { class: "rr-tabs" }, [
     tabCards, tabPrompts, el("div", { class: "rr-spacer" }), libInfo, refreshBtn, favBtn, newCardBtn, newCatBtn,
@@ -193,7 +193,7 @@ export function openTagModal(options = {}) {
   const catsBox = el("div", { class: "rr-cats" });
   const gridBox = el("div", { class: "rr-grid" });
   // 卡片内容预览: 点一张卡片就在下面显示它写了什么
-  const previewBox = el("div", { class: "rr-preview", text: "点一张卡片查看内容" });
+  const previewBox = el("div", { class: "rr-preview", text: "Click a card to preview its content" });
   const mainBox = el("div", { class: "rr-main" }, [gridBox, previewBox]);
   const libBody = el("div", { class: "rr-lib-body" }, [catsBox, mainBox]);
   const libs = el("div", { class: "rr-libs" }, [tabs, libBody]);
@@ -215,7 +215,7 @@ export function openTagModal(options = {}) {
     try {
       setValue(text);
     } catch (e) {
-      console.warn("[RiceRabbit] 同步提示词失败", e);
+      console.warn("[RiceRabbit] Failed to sync the prompt", e);
     }
     if (render && mode === "tags") renderChips();
   }
@@ -238,7 +238,7 @@ export function openTagModal(options = {}) {
       Object.entries(res.translations || {}).forEach(([tag, zh]) => ZH_CACHE.set(zhKey(tag), zh || ""));
       if (!closed && mode === "tags") renderChips();
     } catch (e) {
-      console.warn("[RiceRabbit] 翻译失败", e);
+      console.warn("[RiceRabbit] Translation failed", e);
     } finally {
       translating = false;
     }
@@ -249,7 +249,7 @@ export function openTagModal(options = {}) {
     const tags = splitTags(text);
     if (!tags.length) {
       chipsView.append(
-        el("div", { class: "rr-chips-empty", text: "提示词为空 — 点下面的「＋ 标签」直接输入 (回车添加), 或从卡片库点选 / 拖入" }),
+        el("div", { class: "rr-chips-empty", text: "Prompt is empty — click “＋ Tag” below to type one (Enter to add), or pick / drag cards from the library" }),
       );
       chipsView.append(makeAddChip());
       return;
@@ -264,7 +264,7 @@ export function openTagModal(options = {}) {
   }
 
   function makeAddChip() {
-    const chip = el("div", { class: "rr-chip rr-chip-add", title: "添加标签", text: "＋ 标签" });
+    const chip = el("div", { class: "rr-chip rr-chip-add", title: "Add a tag", text: "＋ Tag" });
     chip.addEventListener("click", () => startAdd());
     return chip;
   }
@@ -272,7 +272,7 @@ export function openTagModal(options = {}) {
   function startAdd() {
     const anchor = $(".rr-chip-add", chipsView);
     const holder = el("div", { class: "rr-chip rr-chip-add rr-chip-add-input" });
-    const input = el("input", { class: "rr-chip-input", placeholder: "标签后回车 (可逗号分隔多个, Esc 取消)" });
+    const input = el("input", { class: "rr-chip-input", placeholder: "Type a tag and press Enter (comma-separated, Esc to cancel)" });
     const ac = wireAutocomplete(input, { comma: false });
     let done = false;
     const commit = () => {
@@ -374,9 +374,9 @@ export function openTagModal(options = {}) {
   }
 
   function makeBreakChip(index) {
-    const chip = el("div", { class: "rr-chip rr-break", title: "换行分隔 (拖动可排序)" }, [
+    const chip = el("div", { class: "rr-chip rr-break", title: "Line break (drag to reorder)" }, [
       el("div", { class: "rr-chip-row" }, [el("span", { class: "rr-chip-text", text: "⏎" })]),
-      el("div", { class: "rr-chip-zh", text: "换行" }),
+      el("div", { class: "rr-chip-zh", text: "Line break" }),
     ]);
     chip.draggable = true;
     chip.addEventListener("dragstart", (event) => {
@@ -394,7 +394,7 @@ export function openTagModal(options = {}) {
       $$(".rr-chip.rr-drop-before", chipsView).forEach((c) => c.classList.remove("rr-drop-before"));
     });
     chip.append(el("div", { class: "rr-chip-ops" }, [
-      el("span", { class: "rr-op rr-op-danger", title: "删除这个换行", text: "×", onclick: () => removeTag(index) }),
+      el("span", { class: "rr-op rr-op-danger", title: "Remove this line break", text: "×", onclick: () => removeTag(index) }),
     ]));
     return chip;
   }
@@ -402,7 +402,7 @@ export function openTagModal(options = {}) {
   function makeChip(raw, index) {
     if (isBreak(raw)) return makeBreakChip(index);
     const { content, weight } = parseWeight(raw);
-    const chip = el("div", { class: "rr-chip", title: "拖动排序; 双击编辑; 悬停显示操作" }, [
+    const chip = el("div", { class: "rr-chip", title: "Drag to reorder; double-click to edit; hover for actions" }, [
       el("div", { class: "rr-chip-row" }, [
         el("span", { class: "rr-chip-text", text: content }),
         weight !== 1 ? el("span", { class: "rr-chip-w", text: "×" + weight }) : null,
@@ -425,10 +425,10 @@ export function openTagModal(options = {}) {
       $$(".rr-chip.rr-drop-before", chipsView).forEach((c) => c.classList.remove("rr-drop-before"));
     });
     const ops = el("div", { class: "rr-chip-ops" }, [
-      el("span", { class: "rr-op", title: "降低权重 (-0.1)", text: "▼", onclick: () => setWeight(index, -0.1) }),
-      el("span", { class: "rr-op", title: "增加权重 (+0.1)", text: "▲", onclick: () => setWeight(index, +0.1) }),
-      el("span", { class: "rr-op", title: "编辑", text: "✎", onclick: () => startEdit(index) }),
-      el("span", { class: "rr-op rr-op-danger", title: "删除", text: "×", onclick: () => removeTag(index) }),
+      el("span", { class: "rr-op", title: "Lower weight (-0.1)", text: "▼", onclick: () => setWeight(index, -0.1) }),
+      el("span", { class: "rr-op", title: "Raise weight (+0.1)", text: "▲", onclick: () => setWeight(index, +0.1) }),
+      el("span", { class: "rr-op", title: "Edit", text: "✎", onclick: () => startEdit(index) }),
+      el("span", { class: "rr-op rr-op-danger", title: "Delete", text: "×", onclick: () => removeTag(index) }),
     ]);
     ops.addEventListener("dblclick", (event) => event.stopPropagation());
     chip.append(ops);
@@ -501,7 +501,7 @@ export function openTagModal(options = {}) {
     mode = next;
     chipsView.classList.toggle("rr-hidden", next !== "tags");
     textarea.classList.toggle("rr-shown", next !== "tags");
-    modeBtn.textContent = next === "tags" ? "✏️ 文本编辑" : "🏷️ 标签视图";
+    modeBtn.textContent = next === "tags" ? "✏️ Text editor" : "🏷️ Tag view";
     if (next === "tags") renderChips();
     else textarea.focus();
   }
@@ -519,7 +519,7 @@ export function openTagModal(options = {}) {
   // ---------------- 权重模式 ----------------
 
   function refreshWeightBtn() {
-    weightBtn.textContent = weightMode === "nai" ? "⚖️ 新版权重" : "⚖️ 通用权重";
+    weightBtn.textContent = weightMode === "nai" ? "⚖️ NAI weight" : "⚖️ Generic weight";
   }
   weightBtn.addEventListener("click", () => {
     weightMode = weightMode === "nai" ? "paren" : "nai";
@@ -527,7 +527,7 @@ export function openTagModal(options = {}) {
       localStorage.setItem(WEIGHT_MODE_KEY, weightMode);
     } catch { /* 存不进去也不影响本次 */ }
     refreshWeightBtn();
-    toast(weightMode === "nai" ? "权重写法: 1.5::标签::" : "权重写法: (标签:1.5)");
+    toast(weightMode === "nai" ? "Weight syntax: 1.5::tag::" : "Weight syntax: (tag:1.5)");
   });
   refreshWeightBtn();
 
@@ -541,12 +541,12 @@ export function openTagModal(options = {}) {
         .filter((c) => c && !c.startsWith("<") && needZh(c)),
     )];
     if (!tags.length) {
-      toast("所有标签都已有译文 ✨", "success");
+      toast("Every tag already has a translation ✨", "success");
       return;
     }
     translateBtn.disabled = true;
     const old = translateBtn.textContent;
-    translateBtn.textContent = "⏳ 翻译中...";
+    translateBtn.textContent = "⏳ Translating...";
     try {
       let count = 0;
       for (let i = 0; i < tags.length; i += 20) {
@@ -557,9 +557,9 @@ export function openTagModal(options = {}) {
         });
         renderChips();
       }
-      toast(count ? `已翻译 ${count} 个标签 🌐` : "没拿到译文, 稍后再试", count ? "success" : "warn");
+      toast(count ? `Translated ${count} tag(s) 🌐` : "No translations returned, try again later", count ? "success" : "warn");
     } catch (e) {
-      toast("翻译失败: " + e.message, "error");
+      toast("Translation failed: " + e.message, "error");
     } finally {
       translateBtn.disabled = false;
       translateBtn.textContent = old;
@@ -578,7 +578,7 @@ export function openTagModal(options = {}) {
     const count = activeLib === "prompts" ? promptSelection.size : totalSelected();
     addSelBtn.disabled = !count;
     clearSelBtn.disabled = !count;
-    addSelBtn.textContent = count ? `➕ 添加选中 (${count})` : "➕ 添加选中";
+    addSelBtn.textContent = count ? `➕ Add selected (${count})` : "➕ Add selected";
   }
 
   /** 把若干标签追加到提示词末尾 (空提示词时不带前导逗号)。 */
@@ -599,12 +599,12 @@ export function openTagModal(options = {}) {
       promptSelection.clear();
       renderPromptGrid();
       refreshSelBtns();
-      toast(`已添加 ${count} 个提示词 🌸`, "success");
+      toast(`Added ${count} prompt(s) 🌸`, "success");
       return;
     }
     const batch = [...cardSelection.entries()].filter(([, names]) => names.size);
     if (!batch.length) {
-      toast("请先在卡片库点击选择卡片 (再点取消, 可跨分类多选)", "warn");
+      toast("Pick cards in the library first (click again to deselect, multi-select across categories)", "warn");
       return;
     }
     let count = 0;
@@ -616,7 +616,7 @@ export function openTagModal(options = {}) {
     cardSelection.clear();
     renderCards();
     refreshSelBtns();
-    toast(`已添加 ${count} 张卡片到提示词 🃏`, "success");
+    toast(`Added ${count} card(s) to the prompt 🃏`, "success");
   });
 
   clearSelBtn.addEventListener("click", () => {
@@ -640,8 +640,8 @@ export function openTagModal(options = {}) {
   function makeCoverBox({ type, name, onChange }) {
     const box = el("div", { class: "rr-cover" });
     const preview = el("div", { class: "rr-cover-preview" });
-    const img = el("img", { class: "rr-cover-img", alt: "封面" });
-    const empty = el("div", { class: "rr-cover-empty", text: "无封面" });
+    const img = el("img", { class: "rr-cover-img", alt: "Cover" });
+    const empty = el("div", { class: "rr-cover-empty", text: "No cover" });
     img.style.display = "none";
     preview.append(img, empty);
 
@@ -660,8 +660,8 @@ export function openTagModal(options = {}) {
     reload();
 
     const file = el("input", { type: "file", accept: "image/*", style: { display: "none" } });
-    const pickBtn = el("button", { class: "rr-btn", type: "button", text: "🖼 选择图片" });
-    const clearBtn = el("button", { class: "rr-btn", type: "button", text: "✖ 移除封面" });
+    const pickBtn = el("button", { class: "rr-btn", type: "button", text: "🖼 Choose image" });
+    const clearBtn = el("button", { class: "rr-btn", type: "button", text: "✖ Remove cover" });
 
     pickBtn.addEventListener("click", () => file.click());
     file.addEventListener("change", () => {
@@ -669,7 +669,7 @@ export function openTagModal(options = {}) {
       file.value = "";
       if (!picked) return;
       if (picked.size > 8 * 1024 * 1024) {
-        toast("图片超过 8MB, 换一张小点的", "warn");
+        toast("Image is larger than 8 MB, pick a smaller one", "warn");
         return;
       }
       const reader = new FileReader();
@@ -678,9 +678,9 @@ export function openTagModal(options = {}) {
           await apiPost("/ricerabbit/wildcards/cover", { type, name, data: reader.result });
           reload();
           onChange?.();
-          toast("封面已更新 🌸", "success");
+          toast("Cover updated 🌸", "success");
         } catch (e) {
-          toast("设置封面失败: " + e.message, "error");
+          toast("Failed to set the cover: " + e.message, "error");
         }
       };
       reader.readAsDataURL(picked);
@@ -691,17 +691,17 @@ export function openTagModal(options = {}) {
         const res = await apiPost("/ricerabbit/wildcards/cover/delete", { type, name });
         reload();
         onChange?.();
-        toast(res.removed ? "封面已移除" : "这张卡片本来就没有封面", res.removed ? "success" : "warn");
+        toast(res.removed ? "Cover removed" : "This card has no cover", res.removed ? "success" : "warn");
       } catch (e) {
-        toast("移除封面失败: " + e.message, "error");
+        toast("Failed to remove the cover: " + e.message, "error");
       }
     });
 
     box.append(
       preview,
       el("div", { class: "rr-cover-side" }, [
-        el("div", { class: "rr-cover-title", text: "封面" }),
-        el("div", { class: "rr-hint", text: `与卡片同名的图片, 存为 ${name}.png` }),
+        el("div", { class: "rr-cover-title", text: "Cover" }),
+        el("div", { class: "rr-hint", text: `Image named after the card, stored as ${name}.png` }),
         el("div", { class: "rr-cover-actions" }, [pickBtn, clearBtn]),
         file,
       ]),
@@ -717,12 +717,12 @@ export function openTagModal(options = {}) {
       area.value = value;
       let catInput = null;
       if (category !== null) {
-        catInput = el("input", { class: "rr-mini-input", placeholder: "分类名" });
+        catInput = el("input", { class: "rr-mini-input", placeholder: "Category name" });
         catInput.value = category;
       }
       let nameInput = null;
       if (name !== null) {
-        nameInput = el("input", { class: "rr-mini-input", placeholder: "卡片名" });
+        nameInput = el("input", { class: "rr-mini-input", placeholder: "Card name" });
         nameInput.value = name;
       }
       let done = false;
@@ -747,16 +747,16 @@ export function openTagModal(options = {}) {
           finish(buildResult());
         }
       };
-      const okBtn = el("button", { class: "rr-btn rr-primary", type: "button", text: "保存", onclick: () => finish(buildResult()) });
-      const cancelBtn = el("button", { class: "rr-btn", type: "button", text: "取消", onclick: () => finish(null) });
+      const okBtn = el("button", { class: "rr-btn rr-primary", type: "button", text: "Save", onclick: () => finish(buildResult()) });
+      const cancelBtn = el("button", { class: "rr-btn", type: "button", text: "Cancel", onclick: () => finish(null) });
       const card = el("div", { class: "rr-mini" }, [
         el("div", { class: "rr-mini-title", text: title }),
         area,
-        nameInput ? el("div", { class: "rr-mini-field" }, [el("label", { text: "卡片名" }), nameInput]) : null,
-        catInput ? el("div", { class: "rr-mini-field" }, [el("label", { text: "分类" }), catInput]) : null,
+        nameInput ? el("div", { class: "rr-mini-field" }, [el("label", { text: "Card name" }), nameInput]) : null,
+        catInput ? el("div", { class: "rr-mini-field" }, [el("label", { text: "Category" }), catInput]) : null,
         cover ? makeCoverBox(cover) : null,
         el("div", { class: "rr-mini-actions" }, [
-          el("span", { class: "rr-hint", text: multiline ? "Ctrl+Enter 保存 · Esc 取消" : "Enter 保存 · Esc 取消" }),
+          el("span", { class: "rr-hint", text: multiline ? "Ctrl+Enter to save · Esc to cancel" : "Enter to save · Esc to cancel" }),
           el("div", { class: "rr-spacer" }),
           cancelBtn,
           okBtn,
@@ -787,14 +787,14 @@ export function openTagModal(options = {}) {
   function refreshLibInfo() {
     if (activeLib === "cards") {
       const count = (cardsCache.get(activeCat) || []).filter((c) => !c.special).length;
-      libInfo.textContent = `${types.length} 个分类 · 当前 ${count} 张卡片`;
+      libInfo.textContent = `${types.length} categories · ${count} cards`;
     } else {
       const count = builtinGroups.has(activeCat)
         ? (builtinGroups.get(activeCat) || []).length
         : (promptGroups.get(activeCat) || []).length;
       const total = builtinGroups.size + promptGroups.size;
-      const extra = builtinGroups.size ? ` (内置 ${builtinGroups.size})` : "";
-      libInfo.textContent = `${total} 个分类${extra} · 当前 ${count} 条`;
+      const extra = builtinGroups.size ? ` (built-in ${builtinGroups.size})` : "";
+      libInfo.textContent = `${total} categories${extra} · ${count} entries`;
     }
   }
 
@@ -806,7 +806,7 @@ export function openTagModal(options = {}) {
       : [...builtinGroups.keys(), ...promptGroups.keys()];
     catsBox.dataset.tab = activeLib;
     if (!items.length) {
-      catsBox.append(el("div", { class: "rr-empty", text: activeLib === "cards" ? "还没有分类" : "提示词库是空的" }));
+      catsBox.append(el("div", { class: "rr-empty", text: activeLib === "cards" ? "No categories yet" : "The prompt library is empty" }));
       return;
     }
     if (!items.includes(activeCat)) activeCat = items[0];
@@ -834,10 +834,10 @@ export function openTagModal(options = {}) {
   async function loadCards(category) {
     if (!category) {
       clear(gridBox);
-      gridBox.append(el("div", { class: "rr-empty", text: "卡片库是空的 —— 可以在设置里把卡片库指向 Auto-NovelAI-Refactor 的 data/state/wildcards" }));
+      gridBox.append(el("div", { class: "rr-empty", text: "The card library is empty — point it at Auto-NovelAI-Refactor's data/state/wildcards in settings" }));
       return;
     }
-    gridBox.append(el("div", { class: "rr-empty", text: "加载中..." }));
+    gridBox.append(el("div", { class: "rr-empty", text: "Loading..." }));
     try {
       const data = await apiGet(`/ricerabbit/wildcards/${encodeURIComponent(category)}`);
       cardsCache.set(category, data.cards || []);
@@ -846,7 +846,7 @@ export function openTagModal(options = {}) {
       refreshLibInfo();
     } catch (e) {
       clear(gridBox);
-      gridBox.append(el("div", { class: "rr-empty", text: "加载失败: " + e.message }));
+      gridBox.append(el("div", { class: "rr-empty", text: "Load failed: " + e.message }));
     }
   }
 
@@ -857,24 +857,24 @@ export function openTagModal(options = {}) {
     const token = ++previewToken;
     if (card.special === "random") {
       previewBox.textContent =
-        "🎲 随机\n生成时从本分类里随机取一张卡片；添加进提示词的是 <" + activeCat + ":随机>";
+        "🎲 Random\nPicks a random card from this category at generation time; inserts <" + activeCat + ":random>";
       return;
     }
     if (card.special === "sequential") {
       previewBox.textContent =
-        "🔢 顺序\n按文件名顺序依次取卡片，游标存在插件自己的 data 目录里；添加进提示词的是 <" +
-        activeCat + ":顺序>";
+        "🔢 Sequential\nWalks the cards in filename order (the cursor lives in the plugin's data folder); inserts <" +
+        activeCat + ":sequential>";
       return;
     }
-    previewBox.textContent = "读取中…";
+    previewBox.textContent = "Reading…";
     try {
       const data = await apiGet(`/ricerabbit/wildcards/${encodeURIComponent(activeCat)}/${encodeURIComponent(card.name)}`);
       if (token !== previewToken) return;
       const content = (data.content || "").trim();
-      previewBox.textContent = content || "（这张卡片是空的）";
+      previewBox.textContent = content || "(this card is empty)";
     } catch (e) {
       if (token !== previewToken) return;
-      previewBox.textContent = "读取失败: " + e.message;
+      previewBox.textContent = "Read failed: " + e.message;
     }
   }
 
@@ -883,7 +883,7 @@ export function openTagModal(options = {}) {
     clear(gridBox);
     const cards = cardsCache.get(activeCat) || [];
     if (!cards.length) {
-      gridBox.append(el("div", { class: "rr-empty", text: "这个分类下还没有卡片" }));
+      gridBox.append(el("div", { class: "rr-empty", text: "No cards in this category yet" }));
       return;
     }
     for (const card of cards) {
@@ -901,9 +901,9 @@ export function openTagModal(options = {}) {
       const node = el("div", {
         class: "rr-card" + (selected ? " rr-selected" : "") + (special ? " rr-card-special" : ""),
         title: special === "random"
-          ? "随机取这个分类里的一张卡片, 添加后是 <分类:随机>"
+          ? "Pick a random card from this category; inserts <category:random>"
           : special === "sequential"
-            ? "按文件名顺序依次取卡片, 添加后是 <分类:顺序>"
+            ? "Walk the cards in filename order; inserts <category:sequential>"
             : card.name,
       }, [
         cover,
@@ -935,8 +935,8 @@ export function openTagModal(options = {}) {
           editCard(card.name);
         });
         node.append(el("div", { class: "rr-card-ops" }, [
-          el("span", { class: "rr-op", title: "编辑卡片内容 / 封面", text: "✎", onclick: (event) => { event.stopPropagation(); editCard(card.name); } }),
-          el("span", { class: "rr-op rr-op-danger", title: "删除卡片", text: "×", onclick: (event) => { event.stopPropagation(); deleteCard(card.name); } }),
+          el("span", { class: "rr-op", title: "Edit card content / cover", text: "✎", onclick: (event) => { event.stopPropagation(); editCard(card.name); } }),
+          el("span", { class: "rr-op rr-op-danger", title: "Delete card", text: "×", onclick: (event) => { event.stopPropagation(); deleteCard(card.name); } }),
         ]));
       }
       gridBox.append(node);
@@ -947,9 +947,9 @@ export function openTagModal(options = {}) {
     try {
       const data = await apiGet(`/ricerabbit/wildcards/${encodeURIComponent(activeCat)}/${encodeURIComponent(name)}`);
       const result = await openEditor({
-        title: `编辑卡片 <${activeCat}:${name}>`,
+        title: `Edit card <${activeCat}:${name}>`,
         value: data.content || "",
-        placeholder: "卡片内容 (可以多行, 每行一组; 也可以再引用别的 <分类:卡片>)",
+        placeholder: "Card content (multiple lines, one group per line; may reference other <category:card>)",
         name, // 卡片名可改: 保存时名字变了就先改名, 封面会跟着一起挪
         // 封面是独立文件, 选完立即保存, 关掉弹层也会保留
         cover: { type: activeCat, name, onChange: () => loadCards(activeCat) },
@@ -963,56 +963,56 @@ export function openTagModal(options = {}) {
           const bucket = cardSelection.get(activeCat);
           if (bucket?.delete(name)) bucket.add(newName); // 选中集合同步改名
         } catch (e) {
-          toast("改名失败: " + e.message, "error");
+          toast("Rename failed: " + e.message, "error");
           return;
         }
       }
 
       await apiPost("/ricerabbit/wildcards/save", { type: activeCat, name: newName, content: result.value });
       await loadCards(activeCat);
-      toast(`已保存 <${activeCat}:${newName}>`, "success");
+      toast(`Saved <${activeCat}:${newName}>`, "success");
     } catch (e) {
-      toast("编辑失败: " + e.message, "error");
+      toast("Edit failed: " + e.message, "error");
     }
   }
 
   async function deleteCard(name) {
-    if (!window.confirm(`删除卡片 <${activeCat}:${name}>?\n(会移到插件的 data/trash 里, 不会真的删掉)`)) return;
+    if (!window.confirm(`Delete card <${activeCat}:${name}>?\n(it is moved to the plugin's data/trash, not really deleted)`)) return;
     try {
       await apiPost("/ricerabbit/wildcards/delete", { type: activeCat, name });
       await loadCards(activeCat);
-      toast("已删除 🌸", "success");
+      toast("Deleted 🌸", "success");
     } catch (e) {
-      toast("删除失败: " + e.message, "error");
+      toast("Delete failed: " + e.message, "error");
     }
   }
 
   newCardBtn.addEventListener("click", async () => {
     if (!activeCat) {
-      toast("请先选择一个分类", "warn");
+      toast("Pick a category first", "warn");
       return;
     }
-    const name = window.prompt(`在分类「${activeCat}」下新建卡片, 输入卡片名:`);
+    const name = window.prompt(`New card in “${activeCat}” — enter the card name:`);
     if (!name || !name.trim()) return;
     try {
       await apiPost("/ricerabbit/wildcards/save", { type: activeCat, name: name.trim(), content: "" });
       await loadCards(activeCat);
-      toast(`已新建 <${activeCat}:${name.trim()}>`, "success");
+      toast(`Created <${activeCat}:${name.trim()}>`, "success");
     } catch (e) {
-      toast("新建失败: " + e.message, "error");
+      toast("Create failed: " + e.message, "error");
     }
   });
 
   newCatBtn.addEventListener("click", async () => {
-    const name = window.prompt("新建分类, 输入分类名:");
+    const name = window.prompt("New category — enter the name:");
     if (!name || !name.trim()) return;
     try {
       await apiPost("/ricerabbit/wildcards/create-type", { name: name.trim() });
       activeCat = name.trim();
       await loadTypes();
-      toast(`已新建分类 ${name.trim()}`, "success");
+      toast(`Created category ${name.trim()}`, "success");
     } catch (e) {
-      toast("新建失败: " + e.message, "error");
+      toast("Create failed: " + e.message, "error");
     }
   });
 
@@ -1039,7 +1039,7 @@ export function openTagModal(options = {}) {
     if (builtinGroups.has(activeCat)) {
       const tags = builtinGroups.get(activeCat) || [];
       if (!tags.length) {
-        gridBox.append(el("div", { class: "rr-empty", text: "这个内置分组是空的" }));
+        gridBox.append(el("div", { class: "rr-empty", text: "This built-in group is empty" }));
         return;
       }
       const cloud = el("div", { class: "rr-tagcloud" });
@@ -1047,7 +1047,7 @@ export function openTagModal(options = {}) {
         // 和 ANR 一样做双语标签: 英文在上, 中文译文小字在下
         const node = el("div", {
           class: "rr-tag rr-tag-builtin" + (promptSelection.has(en) ? " rr-selected" : ""),
-          title: "点击选中 / 取消选中",
+          title: "Click to select / deselect",
         }, zh ? [
           el("span", { text: en }),
           el("span", { class: "rr-tag-zh", text: zh }),
@@ -1066,15 +1066,15 @@ export function openTagModal(options = {}) {
 
     const tags = promptGroups.get(activeCat) || [];
     if (!tags.length) {
-      gridBox.append(el("div", { class: "rr-empty", text: "这个分类下还没有收藏的提示词" }));
+      gridBox.append(el("div", { class: "rr-empty", text: "No saved prompts in this category yet" }));
       return;
     }
     const cloud = el("div", { class: "rr-tagcloud" });
     for (const tag of tags) {
-      const del = el("span", { class: "rr-tag-del", text: "×", title: "从提示词库删除" });
+      const del = el("span", { class: "rr-tag-del", text: "×", title: "Delete from the prompt library" });
       const node = el("div", {
         class: "rr-tag" + (promptSelection.has(tag) ? " rr-selected" : ""),
-        title: "点击选中 / 取消选中",
+        title: "Click to select / deselect",
       }, [el("span", { text: tag }), del]);
       node.addEventListener("click", () => {
         if (promptSelection.has(tag)) promptSelection.delete(tag);
@@ -1088,9 +1088,9 @@ export function openTagModal(options = {}) {
           await apiPost("/ricerabbit/prompts/delete", { text: tag });
           promptSelection.delete(tag);
           await loadPromptLibrary();
-          toast(`已从提示词库删除: ${tag}`, "success");
+          toast(`Removed from the prompt library: ${tag}`, "success");
         } catch (e) {
-          toast("删除失败: " + e.message, "error");
+          toast("Delete failed: " + e.message, "error");
         }
       });
       cloud.append(node);
@@ -1100,31 +1100,31 @@ export function openTagModal(options = {}) {
 
   favBtn.addEventListener("click", async () => {
     const result = await openEditor({
-      title: "收藏提示词到提示词库",
+      title: "Save a prompt to the library",
       value: "",
-      category: activeCat || "默认",
-      placeholder: "要收藏的标签或提示词",
+      category: activeCat || "Default",
+      placeholder: "Tag or prompt to save",
       multiline: false,
     });
     if (!result || !result.value.trim()) return;
     try {
       await apiPost("/ricerabbit/prompts/add", {
         text: result.value.trim(),
-        category: (result.category || "默认").trim() || "默认",
+        category: (result.category || "Default").trim() || "Default",
       });
-      activeCat = (result.category || "默认").trim() || "默认";
+      activeCat = (result.category || "Default").trim() || "Default";
       await loadPromptLibrary();
       renderCats();
       renderPromptGrid();
-      toast("已收藏 🌸", "success");
+      toast("Saved 🌸", "success");
     } catch (e) {
-      toast("收藏失败: " + e.message, "error");
+      toast("Save failed: " + e.message, "error");
     }
   });
 
   refreshBtn.addEventListener("click", async () => {
     refreshBtn.disabled = true;
-    refreshBtn.textContent = "⏳ 刷新中";
+    refreshBtn.textContent = "⏳ Refreshing";
     try {
       await apiPost("/ricerabbit/refresh", {});
       cardsCache.clear();
@@ -1136,13 +1136,13 @@ export function openTagModal(options = {}) {
         renderPromptGrid();
       }
       refreshLibInfo();
-      previewBox.textContent = "库已刷新";
-      toast("卡片库与提示词库已重新读取", "success");
+      previewBox.textContent = "Library reloaded";
+      toast("Card and prompt libraries reloaded", "success");
     } catch (e) {
-      toast("刷新失败: " + e.message, "error");
+      toast("Refresh failed: " + e.message, "error");
     } finally {
       refreshBtn.disabled = false;
-      refreshBtn.textContent = "🔄 刷新";
+      refreshBtn.textContent = "🔄 Refresh";
     }
   });
 
@@ -1166,7 +1166,7 @@ export function openTagModal(options = {}) {
     if (isCards) {
       if (cardsCache.has(activeCat)) renderCards();
       else loadCards(activeCat);
-      previewBox.textContent = "点一张卡片查看内容";
+      previewBox.textContent = "Click a card to preview its content";
     } else {
       renderPromptGrid();
       // 每次切到提示词库都重新拉一次: 在设置里换过库目录能立刻看到新数据
@@ -1196,7 +1196,7 @@ export function openTagModal(options = {}) {
     editor.classList.remove("rr-drag-over");
     try {
       const { type, name } = JSON.parse(raw);
-      if (appendTags([`<${type}:${name}>`])) toast(`已添加 <${type}:${name}>`, "success");
+      if (appendTags([`<${type}:${name}>`])) toast(`Added <${type}:${name}>`, "success");
     } catch { /* 忽略非法数据 */ }
   });
 
@@ -1242,7 +1242,7 @@ export function openTagModal(options = {}) {
       await loadTypes();
     } catch (e) {
       clear(gridBox);
-      gridBox.append(el("div", { class: "rr-empty", text: "卡片库加载失败: " + e.message }));
+      gridBox.append(el("div", { class: "rr-empty", text: "Failed to load the card library: " + e.message }));
     }
     try {
       await loadPromptLibrary();

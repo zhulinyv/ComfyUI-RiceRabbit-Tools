@@ -38,7 +38,7 @@ function syncAnyInputs(node) {
     }
     node.setDirtyCanvas(true, true);
   } catch (e) {
-    console.warn("[RiceRabbit] 同步任意类型输入失败", e);
+    console.warn("[RiceRabbit] Failed to sync any-type inputs", e);
   } finally {
     node.__rrSyncing = false;
   }
@@ -82,7 +82,7 @@ app.registerExtension({
       try {
         setupAnyNode(this);
       } catch (e) {
-        console.error("[RiceRabbit] 任意类型选择初始化失败", e);
+        console.error("[RiceRabbit] Any Switch init failed", e);
       }
       return result;
     };

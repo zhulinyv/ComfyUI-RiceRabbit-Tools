@@ -23,21 +23,21 @@ import time
 from pathlib import Path
 
 from ricerabbit_paths import anr_root, data_dir, prompt_library_file, wildcards_dir
+from ricerabbit_text import KEY_RANDOM, KEY_SEQUENTIAL, safe_child
 
 _LOCK = threading.RLock()
 
 COVER_EXTS = (".png", ".jpg", ".jpeg", ".webp", ".gif")
 CARD_EXTS = (".txt",)
 
-# 两个虚拟卡片: 不是文件, 只是 <分类:随机> / <分类:顺序> 的入口 (与 ANR 一致)
-KEY_RANDOM = "随机"
-KEY_SEQUENTIAL = "顺序"
+# 两个虚拟卡片: 不是文件, 只是 <category:random> / <category:sequential> 的入口
+# (老的中文写法 <分类:随机> 仍然能被解析, 见 ricerabbit_text._LEGACY_KEYS)
 VIRTUAL_CARDS = (KEY_RANDOM, KEY_SEQUENTIAL)
 
 # 只读一次的提示词库缓存 (按 mtime 失效)
 _PL_CACHE: dict = {"stamp": None, "items": []}
 
-DEFAULT_CATEGORY = "默认"
+DEFAULT_CATEGORY = "Default"
 PL_MAX_ITEMS = 2000
 
 
@@ -48,9 +48,9 @@ def _safe_name(name: str) -> str:
     """挡住路径穿越: 分类名/卡片名不允许分隔符与 .."""
     text = (name or "").strip()
     if not text or text in (".", ".."):
-        raise ValueError("名称不能为空")
+        raise ValueError("Name must not be empty")
     if "/" in text or "\\" in text or ":" in text:
-        raise ValueError(f"名称不合法: {name}")
+        raise ValueError(f"Invalid name: {name}")
     return text
 
 
@@ -81,26 +81,30 @@ def wildcard_root() -> Path:
 
 
 def list_types() -> list[str]:
-    root = wildcard_root()
     try:
+        root = wildcard_root().resolve()
         return sorted(d.name for d in root.iterdir() if d.is_dir() and not d.name.startswith("."))
-    except OSError:
+    except (OSError, ValueError):
         return []
 
 
 def find_cover(category: str, name: str) -> Path | None:
-    folder = wildcard_root() / category
+    # 必须先清洗再碰文件系统: category 直接来自 URL / 卡片库请求,
+    # 未清洗时 is_file() 会去探测任意路径 (Windows 上 \\host\share 还会触发 SMB 认证)
+    folder = safe_child(wildcard_root(), category)
+    if folder is None:
+        return None
     for ext in COVER_EXTS:
-        candidate = folder / f"{name}{ext}"
-        if candidate.is_file():
+        candidate = safe_child(folder, f"{name}{ext}")
+        if candidate is not None and candidate.is_file():
             return candidate
     return None
 
 
 def list_cards(category: str) -> list[dict]:
     """分类下的全部卡片 (按名字排序, 带封面与标签数)。"""
-    folder = wildcard_root() / category
-    if not folder.is_dir():
+    folder = safe_child(wildcard_root(), category)
+    if folder is None or not folder.is_dir():
         return []
     covers = {}
     cards = []
@@ -145,10 +149,10 @@ def _q(text: str) -> str:
 
 def get_card(category: str, name: str) -> str:
     if name in VIRTUAL_CARDS:
-        raise ValueError(f"{name}是虚拟卡片, 没有内容可编辑")
+        raise ValueError(f"{name} is a virtual card and has no content to edit")
     path = wildcard_root() / _safe_name(category) / f"{_safe_name(name)}.txt"
     if not path.is_file():
-        raise FileNotFoundError(f"卡片不存在: {category}:{name}")
+        raise FileNotFoundError(f"Card not found: {category}:{name}")
     for encoding in ("utf-8-sig", "utf-8", "gbk"):
         try:
             return path.read_text(encoding=encoding)
@@ -159,7 +163,7 @@ def get_card(category: str, name: str) -> str:
 
 def save_card(category: str, name: str, content: str) -> None:
     if name in VIRTUAL_CARDS:
-        raise ValueError(f"{name}是保留名, 不能用作卡片名")
+        raise ValueError(f"{name} is a reserved name and cannot be used as a card name")
     folder = wildcard_root() / _safe_name(category)
     folder.mkdir(parents=True, exist_ok=True)
     _atomic_write(folder / f"{_safe_name(name)}.txt", content or "")
@@ -170,18 +174,18 @@ def rename_card(category: str, name: str, new_name: str) -> str:
     name = (name or "").strip()
     new_name = (new_name or "").strip()
     if not new_name:
-        raise ValueError("新卡片名不能为空")
+        raise ValueError("New card name must not be empty")
     if name in VIRTUAL_CARDS or new_name in VIRTUAL_CARDS:
-        raise ValueError(f"{new_name if new_name in VIRTUAL_CARDS else name}是保留名, 不能用作卡片名")
+        raise ValueError(f"{new_name if new_name in VIRTUAL_CARDS else name} is a reserved name and cannot be used as a card name")
     if new_name == name:
         return name
     folder = wildcard_root() / _safe_name(category)
     src = folder / f"{_safe_name(name)}.txt"
     if not src.is_file():
-        raise FileNotFoundError(f"卡片不存在: {category}:{name}")
+        raise FileNotFoundError(f"Card not found: {category}:{name}")
     dst = folder / f"{_safe_name(new_name)}.txt"
     if dst.is_file():
-        raise FileExistsError(f"已有同名卡片: {new_name}")
+        raise FileExistsError(f"A card with that name already exists: {new_name}")
 
     src_stem, dst_stem = _safe_name(name), _safe_name(new_name)
     # 先挪 .txt (失败直接抛错, 封面不动), 成功后再逐个挪封面
@@ -200,14 +204,14 @@ def rename_card(category: str, name: str, new_name: str) -> str:
         except OSError:
             pass
     if moved:
-        print(f"[RiceRabbit] 卡片封面已随改名移动: {name} -> {new_name} ({moved} 张)")
+        print(f"[RiceRabbit] Moved {moved} cover file(s) with the rename: {name} -> {new_name}")
     return new_name
 
 
 def delete_card(category: str, name: str) -> None:
     """删卡片 -> 移到 data/trash/<时间戳>/<分类>/ 。"""
     if name in VIRTUAL_CARDS:
-        raise ValueError(f"{name}是虚拟卡片, 不能删除")
+        raise ValueError(f"{name} is a virtual card and cannot be deleted")
     folder = wildcard_root() / _safe_name(category)
     stamp = time.strftime("%Y%m%d-%H%M%S")
     target = _trash_dir() / stamp / _safe_name(category)
@@ -219,7 +223,7 @@ def delete_card(category: str, name: str) -> None:
             shutil.move(str(path), str(target / path.name))
             moved = True
     if not moved:
-        raise FileNotFoundError(f"卡片不存在: {category}:{name}")
+        raise FileNotFoundError(f"Card not found: {category}:{name}")
 
 
 def create_type(name: str) -> bool:
@@ -233,7 +237,7 @@ def create_type(name: str) -> bool:
 def delete_type(name: str) -> None:
     folder = wildcard_root() / _safe_name(name)
     if not folder.is_dir():
-        raise FileNotFoundError(f"分类不存在: {name}")
+        raise FileNotFoundError(f"Category not found: {name}")
     stamp = time.strftime("%Y%m%d-%H%M%S")
     target = _trash_dir() / stamp
     target.mkdir(parents=True, exist_ok=True)
@@ -242,11 +246,11 @@ def delete_type(name: str) -> None:
 
 def save_cover(category: str, name: str, data: bytes, ext: str) -> Path:
     if name in VIRTUAL_CARDS:
-        raise ValueError(f"{name}是虚拟卡片, 不能设置封面")
+        raise ValueError(f"{name} is a virtual card and cannot have a cover")
     folder = wildcard_root() / _safe_name(category)
     # 分类必须已存在: 否则一个打错的分类名会悄悄在卡片库里建出空目录
     if not folder.is_dir():
-        raise FileNotFoundError(f"分类不存在: {category}")
+        raise FileNotFoundError(f"Category not found: {category}")
     ext = ext if ext in COVER_EXTS else ".png"
     stem = _safe_name(name)
     for old in COVER_EXTS:  # 换扩展名时清掉旧封面
@@ -263,7 +267,7 @@ def save_cover(category: str, name: str, data: bytes, ext: str) -> Path:
 def delete_cover(category: str, name: str) -> bool:
     """删掉卡片的所有同名封面图, 返回是否真的删到了。"""
     if name in VIRTUAL_CARDS:
-        raise ValueError(f"{name}是虚拟卡片, 没有封面")
+        raise ValueError(f"{name} is a virtual card and has no cover")
     folder = wildcard_root() / _safe_name(category)
     stem = _safe_name(name)
     removed = False
@@ -383,7 +387,7 @@ def builtin_prompt_groups() -> dict[str, list[list[str]]]:
 def add_prompt(text: str, category: str = DEFAULT_CATEGORY) -> list[dict]:
     text = (text or "").strip()
     if not text:
-        raise ValueError("内容不能为空")
+        raise ValueError("Content must not be empty")
     category = (category or DEFAULT_CATEGORY).strip() or DEFAULT_CATEGORY
     with _LOCK:
         items = [x for x in read_prompt_library() if x["text"] != text]

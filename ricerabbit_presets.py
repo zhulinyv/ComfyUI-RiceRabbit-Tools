@@ -33,7 +33,7 @@ DEFAULT_PRESETS: list[tuple[int, int]] = [
     (1080, 1920),
 ]
 
-CUSTOM_LABEL = "自定义"
+CUSTOM_LABEL = "Custom"
 
 _lock = threading.RLock()
 _cache: dict = {"stamp": None, "presets": []}

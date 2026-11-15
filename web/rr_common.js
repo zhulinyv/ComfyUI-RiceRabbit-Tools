@@ -75,7 +75,7 @@ async function readError(res, fallback) {
 
 export async function apiGet(path) {
   const res = await api.fetchApi(path, { cache: "no-store" });
-  if (!res.ok) throw new Error(await readError(res, `请求失败 (${res.status})`));
+  if (!res.ok) throw new Error(await readError(res, `Request failed (${res.status})`));
   return res.json();
 }
 
@@ -85,7 +85,7 @@ export async function apiPost(path, body) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body ?? {}),
   });
-  if (!res.ok) throw new Error(await readError(res, `请求失败 (${res.status})`));
+  if (!res.ok) throw new Error(await readError(res, `Request failed (${res.status})`));
   return res.json();
 }
 
@@ -267,7 +267,7 @@ export function wireAutocomplete(input, opts = {}) {
       const row = el("div", { class: `rr-sug rr-cat-${item.category ?? 0}` }, [
         el("span", { class: "rr-sug-dot" }),
         el("span", { class: "rr-sug-tag" }, [highlight(item.tag, keyword)]),
-        item.alias ? el("span", { class: "rr-sug-alias", title: "别名: " + item.alias }, ["⇢ ", highlight(item.alias, keyword)]) : null,
+        item.alias ? el("span", { class: "rr-sug-alias", title: "Alias: " + item.alias }, ["⇢ ", highlight(item.alias, keyword)]) : null,
         item.zh ? el("span", { class: "rr-sug-zh" }, [highlight(item.zh, keyword)]) : null,
         el("span", { class: "rr-sug-count", text: fmtCount(item.count) }),
       ]);

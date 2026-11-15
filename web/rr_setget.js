@@ -49,7 +49,7 @@ app.registerExtension({
         const node = this;
         node.color = "#223349";
 
-        this.addWidget("text", "变量名", "", () => {
+        this.addWidget("text", "Variable name", "", () => {
           node.onRename?.();
         }, {});
 
@@ -113,7 +113,7 @@ app.registerExtension({
         const node = this;
         node.color = "#223349";
 
-        this.addWidget("combo", "变量名", "", () => {
+        this.addWidget("combo", "Variable name", "", () => {
           node.onRename?.();
         }, {
           // 下拉选项 = 图里所有有效 Set 的变量名, 重名去重
