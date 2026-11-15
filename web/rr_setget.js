@@ -18,6 +18,23 @@ const SET_TYPE = "RiceRabbitSetNode";
 const GET_TYPE = "RiceRabbitGetNode";
 const LGNode = window.LiteGraph.LGraphNode;
 
+function captureWidgetValue(node, widget) {
+  // 拦下所有赋值: 只要写进过非空值就记住, 之后被人清空也能补回来
+  let stored = widget.value;
+  Object.defineProperty(widget, "value", {
+    configurable: true,
+    enumerable: true,
+    get() {
+      return stored;
+    },
+    set(next) {
+      stored = next ?? "";
+      if (stored) node.__rrSavedName = stored;
+    },
+  });
+}
+
+
 // litegraph 的节点 mode: 2 = Never, 4 = Bypass —— 这两种都不算有效
 function isEffective(node) {
   return node?.mode !== 2 && node?.mode !== 4;
@@ -29,6 +46,38 @@ function findSetters(graph, name) {
     (n) => n.type === SET_TYPE && isEffective(n) && n.widgets?.[0]?.value === name,
   );
 }
+
+/**
+ * 变量名看护。
+ *
+ * Set/Get 是纯前端虚拟节点, 名字只存在 widgets_values 里。实测 1.58 的加载流程:
+ * 值先被填进 widget, 随后另一个扩展 (Easy-Use / rgthree 之类) 又把它清掉,
+ * 节点标题跟着退回 "Set"/"Get"。而那时 configure 拿到的 info 已经没有
+ * widgets_values 了, 事后补不回来。
+ *
+ * 所以这里做两件事, 高频扫一遍: 看到值就记到节点上 (__rrSavedName),
+ * 看到空值且不是用户主动清空的, 就用记下来的值补回去。
+ */
+const WATCH_INTERVAL = 120;
+
+function watchVariableNames() {
+  for (const node of app.graph?._nodes || []) {
+    if (node?.type !== SET_TYPE && node?.type !== GET_TYPE) continue;
+    const widget = node.widgets?.[0];
+    if (!widget) continue;
+    if (widget.value) {
+      node.__rrSavedName = widget.value;
+      continue;
+    }
+    if (node.__userEdited) continue;
+    const value = node.__rrSavedName || node.properties?.previousName;
+    if (!value) continue;
+    widget.value = value;
+    node.onRename?.();
+  }
+}
+
+setInterval(watchVariableNames, WATCH_INTERVAL);
 
 app.registerExtension({
   name: "RiceRabbit.SetNode",
@@ -49,31 +98,62 @@ app.registerExtension({
         const node = this;
         node.color = "#223349";
 
-        this.addWidget("text", "Variable name", "", () => {
+        const nameWidget = this.addWidget("text", "Variable name", "", () => {
+          node.__userEdited = true;
+          // 用户主动清空时把存档也清掉, 否则重新加载会被兜底逻辑复活
+          if (!node.widgets?.[0]?.value) node.properties.previousName = "";
           node.onRename?.();
         }, {});
+        captureWidgetValue(node, nameWidget);
 
         this.addInput("*", "*");
 
         // 连线时把类型记录到输入槽, 并同步给所有同名 Get
+        // 反序列化时 litegraph 会先恢复连线再恢复 widgets_values, 那时 inputs 可能
+        // 还没建好 —— 直接 this.inputs[0] 会抛错并中断 configure, 变量名就丢了
         this.onConnectionsChange = function (slotType, slot, isChangeConnect, linkInfo) {
           if (slotType !== 1) return;
+          const input = this.inputs?.[0];
+          if (!input) return;
           if (!isChangeConnect) {
-            this.inputs[0].type = "*";
-            this.inputs[0].name = "*";
+            input.type = "*";
+            input.name = "*";
           } else if (linkInfo && node.graph) {
             const fromNode = (node.graph._nodes || []).find((n) => n.id === linkInfo.origin_id);
             const type = fromNode?.outputs?.[linkInfo.origin_slot]?.type ?? "*";
-            this.inputs[0].type = type;
-            this.inputs[0].name = type;
+            input.type = type;
+            input.name = type;
           }
           this.onRename?.();
+        };
+
+        // litegraph 落到自定义节点上的 configure 不会恢复 widgets_values
+        // (Set/Get 不是 ComfyNode, 走的是原生路径), 这里包一层, 直接用序列化
+        // 数据里的原始值补回去
+        const originConfigure = this.configure;
+        this.configure = function (info) {
+          const values = info?.widgets_values;
+          const fallback = Array.isArray(values) ? values[0] : values?.["Variable name"] ?? values?.["变量名"];
+          // 有的插件加载完还会再 configure 一次 (这次没有 widgets_values),
+          // 把第一次读到的名字记在节点上, 后面就靠它兜住
+          if (fallback) this.__rrSavedName = fallback;
+          const result = originConfigure?.apply(this, arguments);
+          const widget = this.widgets?.[0];
+          if (widget && !widget.value) {
+            const value = this.__rrSavedName || this.properties?.previousName;
+            if (value) {
+              widget.value = value;
+              this.onRename?.();
+            }
+          }
+          return result;
         };
       }
 
       onRename() {
         const name = this.widgets?.[0]?.value ?? "";
-        this.properties.previousName = name;
+        // 反序列化中途 widgets_values 还没恢复, 这时读到的空值不能覆盖存档
+        if (name) this.properties.previousName = name;
         this.title = name ? "Set_" + name : "Set";
         (this.findGetters(app.graph) || []).forEach((getter) => getter.syncOutputs?.());
       }
@@ -113,7 +193,9 @@ app.registerExtension({
         const node = this;
         node.color = "#223349";
 
-        this.addWidget("combo", "Variable name", "", () => {
+        const nameWidget = this.addWidget("combo", "Variable name", "", () => {
+          node.__userEdited = true;
+          if (!node.widgets?.[0]?.value) node.properties.previousName = "";
           node.onRename?.();
         }, {
           // 下拉选项 = 图里所有有效 Set 的变量名, 重名去重
@@ -125,12 +207,32 @@ app.registerExtension({
             return [...new Set(names)].sort();
           },
         });
+        captureWidgetValue(node, nameWidget);
 
         this.addOutput("*", "*");
 
         this.onConnectionsChange = function (slotType, slot, isChangeConnect, linkInfo) {
           node.validateLinks?.();
           node.onRename?.();
+        };
+
+        const originConfigure = this.configure;
+        this.configure = function (info) {
+          const values = info?.widgets_values;
+          const fallback = Array.isArray(values) ? values[0] : values?.["Variable name"] ?? values?.["变量名"];
+          // 有的插件加载完还会再 configure 一次 (这次没有 widgets_values),
+          // 把第一次读到的名字记在节点上, 后面就靠它兜住
+          if (fallback) this.__rrSavedName = fallback;
+          const result = originConfigure?.apply(this, arguments);
+          const widget = this.widgets?.[0];
+          if (widget && !widget.value) {
+            const value = this.__rrSavedName || this.properties?.previousName;
+            if (value) {
+              widget.value = value;
+              this.onRename?.();
+            }
+          }
+          return result;
         };
       }
 
@@ -153,16 +255,19 @@ app.registerExtension({
       }
 
       onRename() {
-        const setters = this.findSetters();
-        this.title = setters.length ? "Get_" + this.widgets[0].value : "Get";
+        const name = this.widgets?.[0]?.value ?? "";
+        if (name) this.properties.previousName = name;
+        this.title = name ? "Get_" + name : "Get";
         this.syncOutputs();
       }
 
       validateLinks() {
+        const graph = this.graph;
+        if (!graph?.links) return;
         for (const output of this.outputs || []) {
           if (output.type === "*" || !output.links) continue;
           for (const linkId of [...output.links]) {
-            const link = this.graph.links[linkId];
+            const link = graph.links[linkId];
             if (link && link.type !== output.type && link.type !== "*") {
               this.graph.removeLink(linkId);
             }
