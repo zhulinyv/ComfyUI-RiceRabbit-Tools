@@ -135,11 +135,13 @@ export function insertSuggestion(input, suggestion, opts = {}) {
   const tag = String(suggestion || "").split(",")[0].trim();
   if (!tag) return;
   const value = input.value ?? "";
-  const { start, end, selected } = keywordRange(input);
+  const { start, end } = keywordRange(input);
   const before = value.slice(0, start);
   const after = value.slice(end);
   let sep = "";
-  if (opts.comma !== false && !selected) {
+  // 选中替换也要补逗号: ComfyUI 的多行框在 input 事件里选择区偶尔是"有选中"的状态,
+  // 之前带着 !selected 判断, 结果补全进去就是光秃秃一个词
+  if (opts.comma !== false) {
     if (!after) sep = NO_SEP_BEFORE.test(before) ? "" : ", ";
     else if (!NO_SEP_AFTER.test(after) && !NO_SEP_BEFORE.test(before)) sep = ", ";
   }
