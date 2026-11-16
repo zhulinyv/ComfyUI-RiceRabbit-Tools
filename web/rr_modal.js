@@ -9,7 +9,9 @@ import {
 } from "./rr_common.js";
 
 const BREAK = "\n";
-const isBreak = (tag) => tag === BREAK;
+// 原文是 ",换行" 时单独记一笔, 否则拼回去会把这个逗号吃掉
+const BREAK_COMMA = "\n,";
+const isBreak = (tag) => tag === BREAK || tag === BREAK_COMMA;
 const WEIGHT_MODE_KEY = "ricerabbit.weightMode";
 
 // 译文缓存跨弹窗共享: 同一批标签只查一次, 再开窗口立刻就有中文
@@ -33,6 +35,7 @@ export function splitTags(value) {
   let buf = "";
   let depth = 0;
   let wDepth = 0;
+  let pendingComma = false;
   const text = String(value ?? "").replace(/\r\n?/g, "\n");
   const openRe = /^\d*\.?\d+::/;
   for (let i = 0; i < text.length; i++) {
@@ -56,12 +59,21 @@ export function splitTags(value) {
     else if (ch === ")" || ch === "]" || ch === "}" || ch === ">") depth = Math.max(0, depth - 1);
     const dotSep = ch === "." && text[i + 1] === " ";
     if ((ch === "," || ch === "\n" || dotSep) && depth === 0 && wDepth === 0) {
-      out.push(buf);
-      if (ch === "\n") out.push(BREAK);
-      if (dotSep) i++;
-      buf = "";
+      if (ch === "\n") {
+        // 换行: 保留 "换行前有没有逗号" 的信息, 拼回去时原样还原
+        if (buf.trim()) out.push(buf);
+        out.push(pendingComma ? BREAK_COMMA : BREAK);
+        pendingComma = false;
+        buf = "";
+      } else {
+        out.push(buf);
+        if (dotSep) i++;
+        buf = "";
+        pendingComma = ch === ",";
+      }
     } else {
       buf += ch;
+      if (!/\s/.test(ch)) pendingComma = false;
     }
   }
   out.push(buf);
@@ -80,7 +92,7 @@ export function joinTags(tags) {
   let needSep = false;
   for (const tag of tags) {
     if (isBreak(tag)) {
-      text += "\n";
+      text += tag === BREAK_COMMA ? ",\n" : "\n";
       needSep = false;
       continue;
     }

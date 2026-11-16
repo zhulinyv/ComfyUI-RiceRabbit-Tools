@@ -224,15 +224,27 @@ export function wireAutocomplete(input, opts = {}) {
   }
 
   function place() {
+    const rect = input.getBoundingClientRect();
     const { x, y, lineH } = caretPoint(input);
-    const width = Math.max(Math.round(input.getBoundingClientRect().width), 340);
-    const height = list.offsetHeight;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    list.style.width = Math.min(width, vw - 24) + "px";
+    const width = Math.min(Math.max(Math.round(rect.width), 340), vw - 24);
+    // 宽度会影响到换行后高度, 先写宽度再量
+    list.style.width = width + "px";
+    const height = list.offsetHeight;
     const left = Math.min(Math.max(x, 8), Math.max(8, vw - width - 8));
-    let top = y + lineH + 4;
-    if (top + height > vh - 8 && y - height - 4 > 8) top = y - height - 4;
+
+    // 优先放到输入框外面 —— 跟着光标走的话会压在还没写完的行上
+    const gap = 6;
+    let top;
+    if (rect.bottom + gap + height <= vh - 8) {
+      top = rect.bottom + gap;
+    } else if (rect.top - gap - height >= 8) {
+      top = rect.top - gap - height;
+    } else {
+      top = y + lineH + 4;
+      if (top + height > vh - 8) top = Math.max(8, vh - height - 8);
+    }
     list.style.left = Math.round(left) + "px";
     list.style.top = Math.round(top) + "px";
   }
@@ -357,6 +369,11 @@ export function wireAutocomplete(input, opts = {}) {
   const onBlur = () => setTimeout(() => {
     if (document.activeElement !== input) hide();
   }, 120);
+  // ComfyUI 的画布点一下不会让 textarea 失焦, 所以额外监听一次全局按下
+  const onOutsidePointerDown = (event) => {
+    if (event.target === input || list.contains(event.target)) return;
+    hide();
+  };
   const onCompositionStart = () => { composing = true; };
   const onCompositionEnd = () => { composing = false; };
   const follow = () => {
@@ -375,6 +392,7 @@ export function wireAutocomplete(input, opts = {}) {
   input.addEventListener("compositionend", onCompositionEnd);
   window.addEventListener("scroll", follow, true);
   window.addEventListener("resize", follow);
+  document.addEventListener("pointerdown", onOutsidePointerDown, true);
 
   return {
     destroy() {
@@ -387,6 +405,7 @@ export function wireAutocomplete(input, opts = {}) {
       input.removeEventListener("compositionend", onCompositionEnd);
       window.removeEventListener("scroll", follow, true);
       window.removeEventListener("resize", follow);
+      document.removeEventListener("pointerdown", onOutsidePointerDown, true);
       list.remove();
     },
   };
