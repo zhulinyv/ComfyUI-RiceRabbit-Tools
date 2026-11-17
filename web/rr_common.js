@@ -154,6 +154,19 @@ export function insertSuggestion(input, suggestion, opts = {}) {
   }
   input.dataset.rrSkipSuggest = "1";
   input.dispatchEvent(new Event("input", { bubbles: true }));
+
+  // 有些前端 (Nodes 2.0 的 Vue 输入框) 只认状态里的值, 直接改 DOM 会在下一次
+  // 渲染时被冲掉; 这里顺手把 widget 的值也写上, 保证光标后那半截 ", " 留得住
+  const graph = window.comfyAPI?.app?.app?.graph;
+  for (const node of graph?._nodes || []) {
+    for (const widget of node.widgets || []) {
+      const el = widget.element ?? widget.inputEl;
+      if (el === input || el?.contains?.(input)) {
+        widget.value = input.value;
+        return;
+      }
+    }
+  }
 }
 
 /** 光标在视口中的坐标 (textarea 没有原生 API, 用等宽等字体的隐藏镜像量)。 */

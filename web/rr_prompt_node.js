@@ -186,11 +186,19 @@ function nodeScreenRect(node) {
 function findOwnPromptNode(textarea) {
   const rect = textarea.getBoundingClientRect();
   if (rect.width < 4 || rect.height < 4) return null;
-  const matches = (app.graph?._nodes || []).filter(
-    (n) => n.type === "RiceRabbitPrompt" &&
-      n.widgets?.some((w) => w.name === "prompt" && w.element === textarea),
+  const nodes = app.graph?._nodes || [];
+  const owners = nodes.filter((n) => n.type === "RiceRabbitPrompt");
+  if (!owners.length) return null;
+  // 优先按 widget 的 DOM 引用认领; 不同版本 ComfyUI 上这个引用可能叫 element,
+  // 也可能是 widget 自己包了一层, 所以再退一步: 图里只有一个 Prompt 节点时直接认
+  const matched = owners.filter((n) =>
+    n.widgets?.some(
+      (w) => w.name === "prompt" && (w.element === textarea || w.inputEl === textarea || w.element?.contains?.(textarea)),
+    ),
   );
-  return matches.length === 1 ? matches[0] : null;
+  if (matched.length === 1) return matched[0];
+  if (owners.length === 1) return owners[0];
+  return null;
 }
 
 document.addEventListener("focusin", (event) => {
