@@ -236,16 +236,11 @@ export function wireAutocomplete(input, opts = {}) {
     const height = list.offsetHeight;
     const left = Math.min(Math.max(x, 8), Math.max(8, vw - width - 8));
 
-    // 优先放到输入框外面 —— 跟着光标走的话会压在还没写完的行上
-    const gap = 6;
-    let top;
-    if (rect.bottom + gap + height <= vh - 8) {
-      top = rect.bottom + gap;
-    } else if (rect.top - gap - height >= 8) {
-      top = rect.top - gap - height;
-    } else {
-      top = y + lineH + 4;
-      if (top + height > vh - 8) top = Math.max(8, vh - height - 8);
+    // 跟着光标走: 贴在当前这一行的下面, 不压住正在敲的字
+    let top = y + lineH + 4;
+    if (top + height > vh - 8) {
+      const above = y - height - 4;
+      top = above >= 8 ? above : Math.max(8, vh - height - 8);
     }
     list.style.left = Math.round(left) + "px";
     list.style.top = Math.round(top) + "px";
