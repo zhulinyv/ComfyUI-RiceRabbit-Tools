@@ -12,6 +12,7 @@ import base64
 import json
 from pathlib import Path
 
+import ricerabbit_compare as compare
 import ricerabbit_library as lib
 import ricerabbit_presets as presets
 import ricerabbit_tags as tags
@@ -353,6 +354,22 @@ def _register(routes) -> None:
             return _json({"translations": await asyncio.to_thread(tr.translate_many, cleaned)})
         except Exception as exc:  # noqa: BLE001
             return _error(f"Translation failed: {exc}", 500)
+
+    @routes.post(f"{PREFIX}/compare/save")
+    async def rr_compare_save(request):
+        try:
+            payload = await _payload(request)
+            result = await asyncio.to_thread(
+                compare.save_cached,
+                payload.get("node_id"),
+                payload.get("picks"),
+                payload.get("names"),
+            )
+            return _json(result)
+        except (ValueError, FileNotFoundError) as exc:
+            return _error(str(exc), 400)
+        except Exception as exc:  # noqa: BLE001
+            return _error(f"Save failed: {exc}", 500)
 
     @routes.post(f"{PREFIX}/expand")
     async def rr_expand(request):

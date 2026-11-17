@@ -6,7 +6,7 @@
 // 所以节点里显示的和对比窗口里看到的是同一份像素, 不会因为预览缩放而产生差异。
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
-import { el, themeClass, toast } from "./rr_common.js";
+import { apiPost, clear, el, themeClass, toast } from "./rr_common.js";
 
 const NODE_TYPE = "RiceRabbitImageCompare";
 const GET_TYPE = "RiceRabbitGetNode";
@@ -444,11 +444,17 @@ function openCompareWindow(node) {
     });
     const pickA = el("button", { class: "rr-cmp-pick rr-pick-a", type: "button", text: "A", title: "Set as left image" });
     const pickB = el("button", { class: "rr-cmp-pick rr-pick-b", type: "button", text: "B", title: "Set as right image" });
+    const saveOne = el("button", {
+      class: "rr-cmp-pick rr-save-one",
+      type: "button",
+      text: "💾",
+      title: "Save this image to output/ricerabbit_compare",
+    });
     const row = el("div", { class: "rr-cmp-item", title: "Click to set as right image, double-click for left" }, [
       el("span", { class: "rr-cmp-no", text: String(index + 1) }),
       thumb,
       el("div", { class: "rr-cmp-meta" }, [name, meta]),
-      el("div", { class: "rr-cmp-picks" }, [pickA, pickB]),
+      el("div", { class: "rr-cmp-picks" }, [saveOne, pickA, pickB]),
     ]);
 
     row.addEventListener("click", () => setB(index));
@@ -463,6 +469,10 @@ function openCompareWindow(node) {
     pickB.addEventListener("click", (event) => {
       event.stopPropagation();
       setB(index);
+    });
+    saveOne.addEventListener("click", (event) => {
+      event.stopPropagation();
+      saveImages([index]);
     });
 
     listBox.append(row);
@@ -728,6 +738,47 @@ function openCompareWindow(node) {
   });
 
   resetBtn.addEventListener("click", resetView);
+
+  // ---------------- 保存 ----------------
+  //
+  // 图片本身在 ComfyUI 的 temp 目录里 (每次执行都会重建), 所以"保存"是把它们
+  // 复制一份到 output/ricerabbit_compare/<时间戳>/, 由后端完成。
+
+  async function saveImages(picks) {
+    try {
+      const result = await apiPost("/ricerabbit/compare/save", {
+        node_id: node.id,
+        picks,
+        names: images.map((entry) => entry.label || ""),
+      });
+      toast(`Saved ${result.count} image(s) → output/${result.relative}`, "success");
+    } catch (error) {
+      toast(`Save failed: ${error?.message || error}`, "error");
+    }
+  }
+
+  selA.addEventListener("change", () => setA(selA.value));
+  selB.addEventListener("change", () => setB(selB.value));
+
+  swapBtn.addEventListener("click", () => {
+    const previous = idxA;
+    idxA = idxB;
+    idxB = previous;
+    refresh();
+  });
+
+  lockBtn.addEventListener("click", () => {
+    follow = !follow;
+    lockBtn.classList.toggle("rr-on", follow);
+    lockBtn.textContent = follow ? "🖱 Follow cursor" : "📌 Position locked";
+  });
+
+  resetBtn.addEventListener("click", resetView);
+
+  // ---------------- 保存 ----------------
+  //
+  // 图片本身在 ComfyUI 的 temp 目录里 (每次执行都会重建), 所以"保存"是把它们
+  // 复制一份到 output/ricerabbit_compare/<时间戳>/, 由后端完成。
 
   function close() {
     try {

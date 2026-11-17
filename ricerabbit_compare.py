@@ -13,6 +13,7 @@ from __future__ import annotations
 import os
 import re
 import shutil
+import time
 
 import numpy as np
 from PIL import Image
@@ -76,6 +77,69 @@ def _batch_size(value) -> int:
         except Exception:
             return 1
     return 1
+
+
+def _safe_filename(text: str, limit: int = 60) -> str:
+    """把 Get 变量名变成能当文件名的样子 (Windows 不允许 / \\ : * ? " < > |)。"""
+    cleaned = re.sub(r'[\\/:*?"<>|\x00-\x1f]', "_", str(text or "")).strip(" ._")
+    return cleaned[:limit]
+
+
+def save_cached(unique_id, picks=None, names=None) -> dict:
+    """把 temp 里缓存的对比图复制到 output/ricerabbit_compare/<时间戳>/。
+
+    picks 是要保存的下标 (None = 全部), 下标顺序与后端 records / 前端列表一致。
+    names 是对应每张图的显示名, 用作文件名前缀, 方便在 output 里认图。
+    """
+    node_id = str(unique_id or "").strip()
+    if not node_id.isdigit():
+        raise ValueError(f"Invalid node id: {unique_id!r}")
+
+    try:
+        import folder_paths
+
+        temp_root = folder_paths.get_temp_directory()
+        output_root = folder_paths.get_output_directory()
+    except Exception as exc:  # noqa: BLE001 - 环境不完整时给个能看懂的错
+        raise RuntimeError(f"ComfyUI folders unavailable: {exc}") from exc
+
+    folder = os.path.join(temp_root, "ricerabbit_compare", node_id)
+    if not os.path.isdir(folder):
+        raise FileNotFoundError("No cached images for this node; run the queue first")
+
+    files = sorted(f for f in os.listdir(folder) if f.lower().endswith(".png"))
+    if not files:
+        raise FileNotFoundError("No cached images for this node; run the queue first")
+
+    indexed = list(enumerate(files))
+    if picks is not None:
+        wanted = {int(p) for p in picks if str(p).lstrip("-").isdigit()}
+        indexed = [(i, f) for i, f in indexed if i in wanted]
+    if not indexed:
+        raise ValueError("Nothing selected to save")
+
+    # 加毫秒, 免得同一秒里连续保存两次挤进同一个目录
+    stamp = time.strftime("%Y%m%d-%H%M%S") + "-" + f"{int(time.time() * 1000) % 1000:03d}"
+    dest = os.path.join(output_root, "ricerabbit_compare", stamp)
+    os.makedirs(dest, exist_ok=True)
+
+    saved = []
+    for index, name in indexed:
+        label = ""
+        if names and 0 <= index < len(names):
+            label = _safe_filename(names[index])
+        target = f"{index + 1:02d}_{label}.png" if label else name
+        shutil.copy2(os.path.join(folder, name), os.path.join(dest, target))
+        saved.append(target)
+
+    print(f"[RiceRabbit] Image Compare: saved {len(saved)} image(s) to {dest}")
+    return {
+        "ok": True,
+        "folder": dest,
+        "relative": f"ricerabbit_compare/{stamp}",
+        "files": saved,
+        "count": len(saved),
+    }
 
 
 class RiceRabbitImageCompare:

@@ -1030,7 +1030,7 @@
 
 .rr-cmp-picks {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 3px;
   flex-shrink: 0;
 }
@@ -1211,4 +1211,9 @@
   background: rgba(8, 10, 14, 0.72);
   border-radius: 5px;
   pointer-events: none;
+}
+.rr-cmp-pick.rr-save-one {
+  width: 24px;
+  font-size: 10px;
+  font-weight: 400;
 }
