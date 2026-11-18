@@ -6,7 +6,7 @@
 // 所以节点里显示的和对比窗口里看到的是同一份像素, 不会因为预览缩放而产生差异。
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
-import { apiPost, clear, el, themeClass, toast } from "./rr_common.js";
+import { clear, el, themeClass, toast } from "./rr_common.js";
 
 const NODE_TYPE = "RiceRabbitImageCompare";
 const GET_TYPE = "RiceRabbitGetNode";
@@ -472,7 +472,7 @@ function openCompareWindow(node) {
     });
     saveOne.addEventListener("click", (event) => {
       event.stopPropagation();
-      saveImages([index]);
+      saveImageToDisk(index);
     });
 
     listBox.append(row);
@@ -744,14 +744,60 @@ function openCompareWindow(node) {
   // 图片本身在 ComfyUI 的 temp 目录里 (每次执行都会重建), 所以"保存"是把它们
   // 复制一份到 output/ricerabbit_compare/<时间戳>/, 由后端完成。
 
-  async function saveImages(picks) {
+  function safeFileName(text) {
+    return (
+      String(text || "")
+        .replace(/[\\/:*?"<>|]/g, "_")
+        .trim()
+        .slice(0, 60) || "image"
+    );
+  }
+
+  /**
+   * 保存单张图: 弹系统的"另存为"让用户自己选位置。
+   *
+   * showSaveFilePicker 必须在点击的手势里调用, 所以先弹框再去取数据 —— 反过来
+   * 的话 await fetch 会把手势用掉, 浏览器直接拒绝弹窗。
+   * 不支持这个 API 的浏览器 (Firefox) 退回普通的下载。
+   */
+  async function saveImageToDisk(index) {
+    const entry = images[index];
+    if (!entry) return;
+    const name = `${String(index + 1).padStart(2, "0")}_${safeFileName(entry.label)}.png`;
+
+    let handle = null;
+    if (typeof window.showSaveFilePicker === "function") {
+      try {
+        handle = await window.showSaveFilePicker({
+          suggestedName: name,
+          types: [{ description: "PNG image", accept: { "image/png": [".png"] } }],
+        });
+      } catch (error) {
+        if (error?.name === "AbortError") return; // 用户自己取消, 不用提示
+        handle = null; // 权限/策略问题: 退回下载
+      }
+    }
+
     try {
-      const result = await apiPost("/ricerabbit/compare/save", {
-        node_id: node.id,
-        picks,
-        names: images.map((entry) => entry.label || ""),
-      });
-      toast(`Saved ${result.count} image(s) → output/${result.relative}`, "success");
+      const response = await fetch(entry.url, { cache: "no-store" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const blob = await response.blob();
+
+      if (handle) {
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        toast(`Saved ${handle.name || name}`, "success");
+        return;
+      }
+
+      const objectUrl = URL.createObjectURL(blob);
+      const link = el("a", { href: objectUrl, download: name });
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
+      toast(`Downloaded ${name}`, "success");
     } catch (error) {
       toast(`Save failed: ${error?.message || error}`, "error");
     }
