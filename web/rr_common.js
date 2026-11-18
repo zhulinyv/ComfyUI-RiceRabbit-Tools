@@ -139,11 +139,15 @@ export function insertSuggestion(input, suggestion, opts = {}) {
   const before = value.slice(0, start);
   const after = value.slice(end);
   let sep = "";
-  // 选中替换也要补逗号: ComfyUI 的多行框在 input 事件里选择区偶尔是"有选中"的状态,
-  // 之前带着 !selected 判断, 结果补全进去就是光秃秃一个词
+  // 选中替换也要补逗号; 另外"光标在本行末尾、后面紧跟换行"时同样要补 ——
+  // 换行虽然也能分隔, 但提示词习惯是每行末尾带逗号, 不补的话两行会粘在一起。
   if (opts.comma !== false) {
-    if (!after) sep = NO_SEP_BEFORE.test(before) ? "" : ", ";
-    else if (!NO_SEP_AFTER.test(after) && !NO_SEP_BEFORE.test(before)) sep = ", ";
+    const inBrackets = NO_SEP_BEFORE.test(before);
+    if (!after || /^\s*\n/.test(after)) {
+      sep = inBrackets ? "" : ", ";
+    } else if (!NO_SEP_AFTER.test(after) && !inBrackets) {
+      sep = ", ";
+    }
   }
   input.value = before + tag + sep + after;
   const caret = start + tag.length + sep.length;
@@ -157,15 +161,35 @@ export function insertSuggestion(input, suggestion, opts = {}) {
 
   // 有些前端 (Nodes 2.0 的 Vue 输入框) 只认状态里的值, 直接改 DOM 会在下一次
   // 渲染时被冲掉; 这里顺手把 widget 的值也写上, 保证光标后那半截 ", " 留得住
+  let syncDone = false;
   const graph = window.comfyAPI?.app?.app?.graph;
   for (const node of graph?._nodes || []) {
     for (const widget of node.widgets || []) {
       const el = widget.element ?? widget.inputEl;
       if (el === input || el?.contains?.(input)) {
         widget.value = input.value;
-        return;
+        syncDone = true;
+        break;
       }
     }
+    if (syncDone) break;
+  }
+
+  // 最后再对一次账: 插入落在末尾时, 结尾必须有分隔符。
+  // 有的输入框会在 input 事件里吃掉尾随空格 (甚至整段重写), 这里等一帧再确认。
+  if (opts.comma !== false && !after && !NO_SEP_BEFORE.test(before) && input.value.includes(tag)) {
+    setTimeout(() => {
+      if (input.value.includes(tag) && !/[,，]\s*$/.test(input.value)) {
+        input.value = input.value.replace(/\s+$/, "") + ", ";
+        try {
+          input.setSelectionRange(input.value.length, input.value.length);
+        } catch {
+          /* 忽略 */
+        }
+        input.dataset.rrSkipSuggest = "1";
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    }, 0);
   }
 }
 
@@ -198,9 +222,13 @@ function caretPoint(input) {
   marker.textContent = "\u200b";
   mirror.append(marker);
   document.body.append(mirror);
-  const lineH = parseFloat(cs.lineHeight) || marker.offsetHeight || 18;
-  const x = rect.left + (input.clientLeft || 0) + marker.offsetLeft - (input.scrollLeft || 0);
-  const y = rect.top + (input.clientTop || 0) + marker.offsetTop - (input.scrollTop || 0);
+  // 画布缩放时 textarea 被 CSS transform 缩过, 镜像 div 仍按原始字号排版,
+  // 量出来的 offset 是"未缩放"坐标, 必须乘上实际缩放系数才能对上屏幕位置
+  const natural = input.offsetWidth || input.clientWidth || rect.width || 1;
+  const scale = natural > 0 ? rect.width / natural : 1;
+  const lineH = (parseFloat(cs.lineHeight) || marker.offsetHeight || 18) * scale;
+  const x = rect.left + ((input.clientLeft || 0) + marker.offsetLeft - (input.scrollLeft || 0)) * scale;
+  const y = rect.top + ((input.clientTop || 0) + marker.offsetTop - (input.scrollTop || 0)) * scale;
   mirror.remove();
   return { x, y, lineH };
 }
@@ -402,6 +430,11 @@ export function wireAutocomplete(input, opts = {}) {
   input.addEventListener("compositionend", onCompositionEnd);
   window.addEventListener("scroll", follow, true);
   window.addEventListener("resize", follow);
+  // 画布缩放是滚轮驱动的, 不会触发 resize —— 这里补一手, 缩放后菜单跟着重算位置
+  const onCanvasZoom = () => {
+    if (!list.classList.contains("rr-hidden")) requestAnimationFrame(place);
+  };
+  document.addEventListener("wheel", onCanvasZoom, { passive: true, capture: true });
   document.addEventListener("pointerdown", onOutsidePointerDown, true);
 
   return {
@@ -415,6 +448,7 @@ export function wireAutocomplete(input, opts = {}) {
       input.removeEventListener("compositionend", onCompositionEnd);
       window.removeEventListener("scroll", follow, true);
       window.removeEventListener("resize", follow);
+      document.removeEventListener("wheel", onCanvasZoom, true);
       document.removeEventListener("pointerdown", onOutsidePointerDown, true);
       list.remove();
     },
