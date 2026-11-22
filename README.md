@@ -15,7 +15,7 @@ git clone https://github.com/zhulinyv/ComfyUI-RiceRabbit-Tools.git
 
 - 节点在菜单里的分类是 `RiceRabbit`，搜 `RiceRabbit` 就能找到全部节点
 - 更新：`cd ComfyUI-RiceRabbit-Tools && git pull`，然后重启
-- `data/` 目录（翻译缓存、分辨率预设、回收站）会在首次运行时自动创建，不随仓库分发
+- `data/` 目录（翻译缓存、分辨率预设、回收站）会在首次运行时自动创建，不随仓库分发；需要换库时在里面手写 `library.json`（见「库位置」）
 - **界面语言**：节点名、tooltip、面板按钮全部是英文；中文翻译放在 `locales/zh/main.json`，
   由 ComfyUI 的 `/i18n` 机制加载 —— 把 ComfyUI 语言切成中文就是中文界面，切成英文就是英文界面
 
@@ -218,22 +218,37 @@ input3 = "best_quality" ┘
   - 提示词库：**ANR 的内置提示词库（9 组约 1900 个标签，带 `📚` 前缀）与自己的收藏分类一起展示**；点击多选后一次插入，内置库只读，收藏的分类可以增删
   - `➕ 添加选中` 批量加入提示词，`✖ 清除选择` 取消
 
-## 设置
+## 库位置（data/library.json）
 
-位置：ComfyUI 设置面板左侧列表最下面的 **OTHER** 分组里的 **RiceRabbit**，或在搜索框直接搜 `RiceRabbit`。
+卡片库与提示词库的路径**不在 ComfyUI 设置里**：ComfyUI 的 `POST /settings/{id}` 任何能访问服务的客户端都能改；路径一旦来自那里，`/ricerabbit/*` 就能被拿来读写、改名、移动、删除任意位置的文件。现在路径只有两个来源：
 
-三项分别放在 `RiceRabbit` 下的三个小节里（**ANR 目录** / **卡片库** / **提示词库**）。
-之所以不用同一个子分类，是因为 ComfyUI 1.58 的设置面板在同一个 subCategory 下有多项时只会渲染其中一项。
+**1. 固定默认位置**（`data/library.json` 不存在时）
 
-| 设置项 | 说明 |
+| 内容 | 位置 |
 | --- | --- |
-| **Auto-NovelAI-Refactor 目录** | 填 ANR 项目根目录（如 `D:\GitClone\Auto-NovelAI-Refactor`）。配置后自动读取它的 `data/state/wildcards` 与 `data/state/prompt_library.json`，标签词典也一并复用。**默认空** |
-| **Wildcards 卡片库目录** | 卡片库根目录，结构 `<分类>/<卡片名>.txt`。默认 `<插件目录>/wildcards` |
-| **提示词库文件** | 提示词库 json 路径，格式 `[{"text": "...", "category": "..."}]`。默认 `<插件目录>/prompts/prompt_library.json` |
+| 卡片库 | `<插件目录>/wildcards` |
+| 提示词库 | `<插件目录>/prompts/prompt_library.json` |
 
-优先级：ANR 目录有效时以 ANR 的库为准；否则用后两项。后两项为空时回落到插件目录下的默认库。
+**2. 手写的白名单文件** `<插件目录>/data/library.json`
 
-卡片库结构（与 ANR 相同）：
+插件没有任何 HTTP 接口会写这个文件，能访问服务的客户端改不了它；改完点标签窗口里的刷新按钮（或重启）即可生效：
+
+```json
+{
+  "anr_root": "D:\\GitClone\\Auto-NovelAI-Refactor",
+  "wildcards_dir": "D:\\cards",
+  "prompt_library_dir": "D:\\prompts"
+}
+```
+
+- 三个键都可省略；`anr_root` 有效时读取它的 `data/state/wildcards` 与 `data/state/prompt_library.json`，标签词典与内置提示词库也一并复用。
+- 值是**允许使用的目录**（allow-list），不是任意路径：必须是绝对路径、不能是网络共享（`\\host\share`）、不能指向插件的 `data/`；ANR 目录必须已存在，另外两个目录不存在时会在第一次写入时创建。
+- 提示词库文件名固定为目录下的 `prompt_library.json`。
+- 卡片、封面、提示词的所有读写/改名/移动/删除，都会在 `realpath` 之后用 `commonpath` 确认仍在库根目录内；`..`、符号链接、目录联接都出不去。
+- 网络共享路径在碰文件系统之前就会被拒绝，避免在 Windows 上触发 SMB 认证。
+- 卡片与分类的删除仍然是移动到 `data/trash/`，不会真正删文件。
+
+### 卡片库结构（与 ANR 相同）
 
 ```
 wildcards/
@@ -275,7 +290,8 @@ ComfyUI-RiceRabbit-Tools/
 ├── ricerabbit_nodes.py         # 节点定义
 ├── ricerabbit_compare.py       # 图片对比节点 (图片落临时文件)
 ├── ricerabbit_routes.py        # HTTP 接口 (/ricerabbit/*)
-├── ricerabbit_paths.py         # 设置读取与路径解析
+├── ricerabbit_paths.py         # 库路径解析（默认位置 / data/library.json）
+├── ricerabbit_fs.py            # 路径包含检查（realpath + commonpath）
 ├── ricerabbit_text.py          # 拼接 / 格式化 / wildcard 展开
 ├── ricerabbit_presets.py       # 分辨率预设读写
 ├── ricerabbit_library.py       # 卡片库与提示词库读写
@@ -284,7 +300,7 @@ ComfyUI-RiceRabbit-Tools/
 ├── web/
 │   ├── rr_common.js            # DOM/接口/提示条/自动补全
 │   ├── rr_modal.js             # 标签化提示词窗口
-│   ├── rr_prompt_node.js       # 节点 UI 与设置项
+│   ├── rr_prompt_node.js       # 节点 UI
 │   ├── rr_setget.js            # 变量 Set / Get 虚拟节点
 │   ├── rr_any_switch.js        # 任意类型选择的动态输入槽
 │   ├── rr_compare.js           # 图片对比: 右侧预览 + 对比窗口
@@ -293,6 +309,7 @@ ComfyUI-RiceRabbit-Tools/
 ├── prompts/prompt_library.json # 默认提示词库
 ├── assets/                     # 标签词典
 └── data/                       # 运行时 (顺序游标 / 翻译缓存 / 回收站)
+    └── library.json            # 可选：手写的库位置（见「库位置」）
 ```
 
 卡片与分类的删除都是**移动到 `data/trash/`**，不会真正删掉文件。
@@ -320,10 +337,11 @@ ComfyUI-RiceRabbit-Tools/
 | POST | `/ricerabbit/translate` | 批量翻译 |
 | POST | `/ricerabbit/expand` | 调试：看 wildcard 展开结果 |
 | GET | `/ricerabbit/resolutions` | 分辨率预设列表 |
-| POST | `/ricerabbit/refresh` | 改完设置后清缓存 |
+| POST | `/ricerabbit/refresh` | 改完 data/library.json 后清缓存 |
 
 ## 说明
 
 - 只依赖 ComfyUI 自带的 `requests`，没有额外 pip 依赖。
+- 库路径只来自固定默认位置或手写的 `data/library.json`；卡片、封面、提示词的读写/改名/移动/删除都限制在解析后的库根目录内（`realpath` + `commonpath`），网络共享路径在接触文件系统之前就被拒绝。
 - 翻译走无 Key 的免费接口（Google / Bing / 百度 / MyMemory），先按系统代理请求，失败再直连；失败的源会冷却 60 秒。
 - 标签词典在启动时由后台线程预热，第一次打开标签窗口不卡。

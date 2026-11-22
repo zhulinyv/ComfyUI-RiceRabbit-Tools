@@ -1,7 +1,7 @@
 [
-  {"text": "masterpiece", "category": "画质"},
-  {"text": "best quality", "category": "画质"},
-  {"text": "1girl", "category": "人物"},
-  {"text": "solo", "category": "人物"},
-  {"text": "cinematic lighting", "category": "风格"}
+  {"text": "masterpiece", "category": "Quality"},
+  {"text": "best quality", "category": "Quality"},
+  {"text": "1girl", "category": "Character"},
+  {"text": "solo", "category": "Character"},
+  {"text": "cinematic lighting", "category": "Style"}
 ]

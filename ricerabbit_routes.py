@@ -17,13 +17,12 @@ import ricerabbit_library as lib
 import ricerabbit_presets as presets
 import ricerabbit_tags as tags
 import ricerabbit_translate as tr
+from ricerabbit_fs import contain
 from ricerabbit_paths import (
-    KEY_ANR_PATH,
-    KEY_PROMPT_LIB,
-    KEY_WILDCARDS_DIR,
-    NODE_DIR,
+    CONFIG_FILE,
+    DEFAULT_PROMPT_LIB,
+    DEFAULT_WILDCARDS_DIR,
     anr_root,
-    get_str,
 )
 from ricerabbit_text import replace_wildcards
 
@@ -61,11 +60,11 @@ def _config_payload() -> dict:
     info.update(
         {
             "anr_path": str(root) if root else "",
-            "anr_path_setting": get_str(KEY_ANR_PATH),
-            "wildcards_setting": get_str(KEY_WILDCARDS_DIR),
-            "prompt_lib_setting": get_str(KEY_PROMPT_LIB),
-            "default_wildcards": str(NODE_DIR / "wildcards"),
-            "default_prompt_lib": str(NODE_DIR / "prompts" / "prompt_library.json"),
+            # 库位置只来自插件目录下这个手写文件, 没有任何路由会写它
+            "config_file": str(CONFIG_FILE),
+            "config_file_exists": CONFIG_FILE.is_file(),
+            "default_wildcards": str(DEFAULT_WILDCARDS_DIR),
+            "default_prompt_lib": str(DEFAULT_PROMPT_LIB),
             "tag_dict": tags.stats(),
         }
     )
@@ -160,13 +159,11 @@ def _cover_path(category: str, name: str) -> Path | None:
     path = lib.find_cover(category, name)
     if path is None or not path.is_file():
         return None
-    root = lib.wildcard_root().resolve()
     try:
-        # 只允许读卡片库里的文件, 挡住 ../ 之类的路径穿越
-        path.resolve().relative_to(root)
+        # 只允许读卡片库里的文件: realpath + commonpath, 挡住 ../ 与符号链接
+        return contain(lib.wildcard_root(), path)
     except ValueError:
         return None
-    return path
 
 
 # ---------------------------------------------------------------- 路由

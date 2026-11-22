@@ -196,7 +196,7 @@ export function openTagModal(options = {}) {
     class: "rr-btn",
     type: "button",
     text: "🔄 Refresh",
-    title: "Reload the card and prompt libraries (click after changing folders in settings)",
+    title: "Reload the card and prompt libraries (click after editing data/library.json)",
   });
   const tabs = el("div", { class: "rr-tabs" }, [
     tabCards, tabPrompts, el("div", { class: "rr-spacer" }), libInfo, refreshBtn, favBtn, newCardBtn, newCatBtn,
@@ -846,7 +846,7 @@ export function openTagModal(options = {}) {
   async function loadCards(category) {
     if (!category) {
       clear(gridBox);
-      gridBox.append(el("div", { class: "rr-empty", text: "The card library is empty — point it at Auto-NovelAI-Refactor's data/state/wildcards in settings" }));
+      gridBox.append(el("div", { class: "rr-empty", text: "The card library is empty — add folder paths to data/library.json (for example Auto-NovelAI-Refactor's data/state/wildcards)" }));
       return;
     }
     gridBox.append(el("div", { class: "rr-empty", text: "Loading..." }));
@@ -1181,7 +1181,7 @@ export function openTagModal(options = {}) {
       previewBox.textContent = "Click a card to preview its content";
     } else {
       renderPromptGrid();
-      // 每次切到提示词库都重新拉一次: 在设置里换过库目录能立刻看到新数据
+      // 每次切到提示词库都重新拉一次: 改过 data/library.json 后能立刻看到新数据
       loadPromptLibrary();
     }
   }

@@ -2,7 +2,7 @@
 
 提示词节点: 上游 text + 节点内提示词 -> 拼接 / wildcard 展开 / 格式化 -> 文本 + conditioning。
 图片对比节点: 多路 IMAGE 输入 -> 临时 PNG -> 节点内轮播 + 滑动分割线对比窗口。
-卡片库与提示词库直接复用 Auto-NovelAI-Refactor 的目录 (在 ComfyUI 设置里指定其路径)。
+卡片库与提示词库直接复用 Auto-NovelAI-Refactor 的目录 (在 data/library.json 里指定其路径)。
 """
 
 from __future__ import annotations

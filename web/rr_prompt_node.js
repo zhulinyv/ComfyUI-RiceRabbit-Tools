@@ -1,117 +1,12 @@
 // 节点 UI: 提示词框接自动补全, 高级设置折叠, 标签化弹窗入口
-// 以及三个 ComfyUI 设置项 (ANR 目录 / 卡片库目录 / 提示词库文件)
+// 库位置由插件目录下的 data/library.json 决定, 不再注册 ComfyUI 设置项:
+// ComfyUI 的 POST /settings/{id} 任何能访问服务的客户端都能改, 路径不能来自那里。
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 import { apiGet, toast, wireAutocomplete } from "./rr_common.js";
 import { openTagModal } from "./rr_modal.js";
 
 const EXT_NAME = "RiceRabbit.Tools";
-
-const SETTING_ANR = "RiceRabbit.ANRPath";
-const SETTING_WILDCARDS = "RiceRabbit.WildcardsDir";
-const SETTING_PROMPT_LIB = "RiceRabbit.PromptLibraryPath";
-
-// ---------------------------------------------------------------- 设置
-
-const SETTINGS = [
-  {
-    id: SETTING_ANR,
-    name: "Auto-NovelAI-Refactor directory",
-    type: "text",
-    defaultValue: "",
-    category: ["RiceRabbit", "ANR directory"],
-    tooltip:
-      "Root folder of your Auto-NovelAI-Refactor checkout (e.g. D:\\GitClone\\Auto-NovelAI-Refactor).\n" +
-      "When set, the card library (data/state/wildcards) and prompt library (data/state/prompt_library.json) " +
-      "are read from there, and its tag dictionary is reused. Leave empty to use the two settings below.",
-  },
-  {
-    id: SETTING_WILDCARDS,
-    name: "Wildcards card library folder",
-    type: "text",
-    defaultValue: "",
-    category: ["RiceRabbit", "Card library"],
-    tooltip:
-      "Root folder of the card library, laid out as <category>/<card>.txt.\n" +
-      "Defaults to wildcards/ inside this plugin; when the ANR directory above is set, that one wins.",
-  },
-  {
-    id: SETTING_PROMPT_LIB,
-    name: "Prompt library file",
-    type: "text",
-    defaultValue: "",
-    category: ["RiceRabbit", "Prompt library"],
-    tooltip:
-      "Path to the prompt library json, shaped like [{\"text\": \"tag\", \"category\": \"group\"}].\n" +
-      "Defaults to prompts/prompt_library.json inside this plugin; when the ANR directory above is set, that one wins.",
-  },
-];
-
-function setSetting(id, value) {
-  try {
-    app.ui.settings.setSettingValue(id, value);
-  } catch (e) {
-    console.warn("[RiceRabbit] Failed to write setting", id, e);
-  }
-}
-
-/**
- * 逐项注册设置。
- *
- * 不用 registerExtension 的 `settings` 数组: 那条路径在某些前端版本里会把数组当成
- * 单个对象处理 (只登记第一项), 表现为"设置面板里只出现一个配置"。这里直接调用
- * addSetting, 一项一项来; 已登记过的 id 会被 ComfyUI 自己跳过, 不会重复。
- */
-function registerSettings(retries = 15) {
-  if (!app.ui?.settings?.addSetting) {
-    if (retries > 0) {
-      // setup 偶尔早于设置模块就绪: 稍等再试
-      setTimeout(() => registerSettings(retries - 1), 200);
-      return;
-    }
-    console.warn("[RiceRabbit] app.ui.settings unavailable, settings not registered");
-    return;
-  }
-  const failed = [];
-  for (const item of SETTINGS) {
-    try {
-      app.ui.settings.addSetting(item);
-    } catch (e) {
-      failed.push(item.id);
-      console.warn("[RiceRabbit] Failed to register setting:", item.id, e);
-    }
-  }
-  if (failed.length) console.warn("[RiceRabbit] Settings that failed to register:", failed.join(", "));
-}
-
-/**
- * 只在设置项确实已注册时才写默认值。
- * 否则 setSettingValue 会给一个还没注册的 id 建出"只有值、没有名字/类型"的占位项，
- * 设置面板里那一行就渲染不出来。
- */
-function writeDefaultIfRegistered(id, value) {
-  if (!value) return;
-  let current;
-  try {
-    current = app.ui.settings.getSettingValue(id, null);
-  } catch {
-    return;
-  }
-  if (current === null || current === undefined) return; // 未注册: 不碰
-  if (String(current).trim()) return; // 用户已经填过: 不覆盖
-  setSetting(id, value);
-}
-
-/** 首次使用时把两个"默认目录"落成真实路径, 让用户在设置里能看见并直接改。 */
-async function initDefaultPaths() {
-  try {
-    const cfg = await apiGet("/ricerabbit/config");
-    writeDefaultIfRegistered(SETTING_WILDCARDS, cfg.default_wildcards || "");
-    writeDefaultIfRegistered(SETTING_PROMPT_LIB, cfg.default_prompt_lib || "");
-  } catch (e) {
-    console.warn("[RiceRabbit] Failed to read library config", e);
-  }
-}
 
 // ---------------------------------------------------------------- widget 工具
 
@@ -440,13 +335,6 @@ app.registerExtension({
   name: EXT_NAME,
 
   async setup() {
-    // 设置项逐项手动注册 (不依赖 settings 数组), 然后再补默认路径
-    registerSettings();
-    console.info("[RiceRabbit] Settings: " + SETTINGS.map((s) => s.id).join(" | "));
-    setTimeout(() => {
-      initDefaultPaths();
-    }, 500);
-
     // 每次生成结束刷新一次分辨率预设 (新组合已经被后端收录)
     try {
       api.addEventListener("execution_success", () => {

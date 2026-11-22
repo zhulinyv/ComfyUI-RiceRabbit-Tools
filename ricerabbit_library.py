@@ -9,6 +9,10 @@
 
     [{"text": "标签", "category": "分类"}, ...]
 
+所有路径都由 ricerabbit_paths 给出 (固定默认位置, 或手写的 data/library.json
+allow-list), 并且每次拼路径都过 ricerabbit_fs.safe_child / contain: 先在
+realpath 之后用 commonpath 确认仍在库根目录内, 再做读写/改名/移动/删除。
+
 删卡片 / 删分类一律先移到插件 data/trash 下, 不做真正的删除。
 """
 
@@ -22,8 +26,9 @@ import threading
 import time
 from pathlib import Path
 
+from ricerabbit_fs import contain, safe_child
 from ricerabbit_paths import anr_root, data_dir, prompt_library_file, wildcards_dir
-from ricerabbit_text import KEY_RANDOM, KEY_SEQUENTIAL, safe_child
+from ricerabbit_text import KEY_RANDOM, KEY_SEQUENTIAL
 
 _LOCK = threading.RLock()
 
@@ -54,8 +59,17 @@ def _safe_name(name: str) -> str:
     return text
 
 
-def _atomic_write(path: Path, text: str) -> None:
+def _join(base: Path, *parts: str) -> Path:
+    """把 parts 拼到 base 下; 越界/非法名字直接抛 ValueError。"""
+    path = safe_child(base, *parts)
+    if path is None:
+        raise ValueError("Invalid library path: " + "/".join(str(p) for p in parts))
+    return path
+
+
+def _atomic_write(base: Path, path: Path, text: str) -> None:
     """原子写: 先写临时文件再替换, 避免半截文件把用户的库写坏。"""
+    path = contain(base, path)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + f".tmp{os.getpid()}")
     tmp.write_text(text, encoding="utf-8")
@@ -82,8 +96,16 @@ def wildcard_root() -> Path:
 
 def list_types() -> list[str]:
     try:
-        root = wildcard_root().resolve()
-        return sorted(d.name for d in root.iterdir() if d.is_dir() and not d.name.startswith("."))
+        root = wildcard_root()
+        types = []
+        for entry in root.iterdir():
+            if entry.name.startswith("."):
+                continue
+            # 符号链接/目录联接如果指向库外, safe_child 会返回 None, 不进列表
+            folder = safe_child(root, entry.name)
+            if folder is not None and folder.is_dir():
+                types.append(entry.name)
+        return sorted(types)
     except (OSError, ValueError):
         return []
 
@@ -113,17 +135,20 @@ def list_cards(category: str) -> list[dict]:
     except OSError:
         return []
     for entry in entries:
-        suffix = entry.suffix.lower()
+        resolved = safe_child(folder, entry.name)
+        if resolved is None or not resolved.is_file():
+            continue
+        suffix = resolved.suffix.lower()
         if suffix in COVER_EXTS:
-            covers.setdefault(entry.stem, suffix)
+            covers.setdefault(resolved.stem, suffix)
         elif suffix in CARD_EXTS:
-            cards.append(entry)
+            cards.append(resolved)
     out = []
     for card in cards:
-        cover = covers.get(card.name[: -len(card.suffix)])
+        cover = covers.get(card.stem)
         out.append(
             {
-                "name": card.name[: -len(card.suffix)],
+                "name": card.stem,
                 "cover": bool(cover),
                 # 加个查询串让浏览器在封面更新后重新拉图
                 "cover_url": f"/ricerabbit/cover?type={_q(category)}&name={_q(card.stem)}&v={int(card.stat().st_mtime)}"
@@ -150,7 +175,7 @@ def _q(text: str) -> str:
 def get_card(category: str, name: str) -> str:
     if name in VIRTUAL_CARDS:
         raise ValueError(f"{name} is a virtual card and has no content to edit")
-    path = wildcard_root() / _safe_name(category) / f"{_safe_name(name)}.txt"
+    path = _join(wildcard_root(), _safe_name(category), f"{_safe_name(name)}.txt")
     if not path.is_file():
         raise FileNotFoundError(f"Card not found: {category}:{name}")
     for encoding in ("utf-8-sig", "utf-8", "gbk"):
@@ -164,9 +189,10 @@ def get_card(category: str, name: str) -> str:
 def save_card(category: str, name: str, content: str) -> None:
     if name in VIRTUAL_CARDS:
         raise ValueError(f"{name} is a reserved name and cannot be used as a card name")
-    folder = wildcard_root() / _safe_name(category)
+    root = wildcard_root()
+    folder = _join(root, _safe_name(category))
     folder.mkdir(parents=True, exist_ok=True)
-    _atomic_write(folder / f"{_safe_name(name)}.txt", content or "")
+    _atomic_write(root, _join(folder, f"{_safe_name(name)}.txt"), content or "")
 
 
 def rename_card(category: str, name: str, new_name: str) -> str:
@@ -179,11 +205,12 @@ def rename_card(category: str, name: str, new_name: str) -> str:
         raise ValueError(f"{new_name if new_name in VIRTUAL_CARDS else name} is a reserved name and cannot be used as a card name")
     if new_name == name:
         return name
-    folder = wildcard_root() / _safe_name(category)
-    src = folder / f"{_safe_name(name)}.txt"
+    root = wildcard_root()
+    folder = _join(root, _safe_name(category))
+    src = _join(folder, f"{_safe_name(name)}.txt")
     if not src.is_file():
         raise FileNotFoundError(f"Card not found: {category}:{name}")
-    dst = folder / f"{_safe_name(new_name)}.txt"
+    dst = _join(folder, f"{_safe_name(new_name)}.txt")
     if dst.is_file():
         raise FileExistsError(f"A card with that name already exists: {new_name}")
 
@@ -192,10 +219,10 @@ def rename_card(category: str, name: str, new_name: str) -> str:
     os.replace(src, dst)
     moved = 0
     for ext in COVER_EXTS:
-        cover_src = folder / f"{src_stem}{ext}"
+        cover_src = _join(folder, f"{src_stem}{ext}")
         if not cover_src.is_file():
             continue
-        cover_dst = folder / f"{dst_stem}{ext}"
+        cover_dst = _join(folder, f"{dst_stem}{ext}")
         try:
             if cover_dst.is_file():
                 cover_dst.unlink()
@@ -212,22 +239,23 @@ def delete_card(category: str, name: str) -> None:
     """删卡片 -> 移到 data/trash/<时间戳>/<分类>/ 。"""
     if name in VIRTUAL_CARDS:
         raise ValueError(f"{name} is a virtual card and cannot be deleted")
-    folder = wildcard_root() / _safe_name(category)
+    folder = _join(wildcard_root(), _safe_name(category))
     stamp = time.strftime("%Y%m%d-%H%M%S")
-    target = _trash_dir() / stamp / _safe_name(category)
+    target = _join(_trash_dir(), stamp, _safe_name(category))
     target.mkdir(parents=True, exist_ok=True)
     stem = _safe_name(name)
     moved = False
     for path in [folder / f"{stem}.txt", *(folder / f"{stem}{ext}" for ext in COVER_EXTS)]:
+        path = _join(folder, path.name)
         if path.is_file():
-            shutil.move(str(path), str(target / path.name))
+            shutil.move(str(path), str(_join(target, path.name)))
             moved = True
     if not moved:
         raise FileNotFoundError(f"Card not found: {category}:{name}")
 
 
 def create_type(name: str) -> bool:
-    folder = wildcard_root() / _safe_name(name)
+    folder = _join(wildcard_root(), _safe_name(name))
     if folder.is_dir():
         return False
     folder.mkdir(parents=True, exist_ok=True)
@@ -235,31 +263,33 @@ def create_type(name: str) -> bool:
 
 
 def delete_type(name: str) -> None:
-    folder = wildcard_root() / _safe_name(name)
+    folder = _join(wildcard_root(), _safe_name(name))
     if not folder.is_dir():
         raise FileNotFoundError(f"Category not found: {name}")
     stamp = time.strftime("%Y%m%d-%H%M%S")
-    target = _trash_dir() / stamp
+    target = _join(_trash_dir(), stamp)
     target.mkdir(parents=True, exist_ok=True)
-    shutil.move(str(folder), str(target / folder.name))
+    shutil.move(str(folder), str(_join(target, folder.name)))
 
 
 def save_cover(category: str, name: str, data: bytes, ext: str) -> Path:
     if name in VIRTUAL_CARDS:
         raise ValueError(f"{name} is a virtual card and cannot have a cover")
-    folder = wildcard_root() / _safe_name(category)
+    folder = _join(wildcard_root(), _safe_name(category))
     # 分类必须已存在: 否则一个打错的分类名会悄悄在卡片库里建出空目录
     if not folder.is_dir():
         raise FileNotFoundError(f"Category not found: {category}")
     ext = ext if ext in COVER_EXTS else ".png"
     stem = _safe_name(name)
     for old in COVER_EXTS:  # 换扩展名时清掉旧封面
-        if old != ext and (folder / f"{stem}{old}").is_file():
-            try:
-                (folder / f"{stem}{old}").unlink()
-            except OSError:
-                pass
-    target = folder / f"{stem}{ext}"
+        if old != ext:
+            old_path = _join(folder, f"{stem}{old}")
+            if old_path.is_file():
+                try:
+                    old_path.unlink()
+                except OSError:
+                    pass
+    target = _join(folder, f"{stem}{ext}")
     target.write_bytes(data)
     return target
 
@@ -268,11 +298,11 @@ def delete_cover(category: str, name: str) -> bool:
     """删掉卡片的所有同名封面图, 返回是否真的删到了。"""
     if name in VIRTUAL_CARDS:
         raise ValueError(f"{name} is a virtual card and has no cover")
-    folder = wildcard_root() / _safe_name(category)
+    folder = _join(wildcard_root(), _safe_name(category))
     stem = _safe_name(name)
     removed = False
     for ext in COVER_EXTS:
-        path = folder / f"{stem}{ext}"
+        path = _join(folder, f"{stem}{ext}")
         if path.is_file():
             try:
                 path.unlink()
@@ -286,6 +316,7 @@ def delete_cover(category: str, name: str) -> bool:
 
 
 def _pl_path() -> Path:
+    # prompt_library_file() 已经做过 realpath + commonpath 的包含检查
     return prompt_library_file()
 
 
@@ -354,7 +385,10 @@ def builtin_prompt_groups() -> dict[str, list[list[str]]]:
     root = anr_root()
     if root is None:
         return {}
-    path = root / "web" / "js" / "data" / "builtinPrompts.js"
+    try:
+        path = contain(root, root / "web" / "js" / "data" / "builtinPrompts.js")
+    except ValueError:
+        return {}
     try:
         st = path.stat()
         stamp = (str(path), st.st_mtime_ns, st.st_size)
@@ -406,12 +440,12 @@ def delete_prompt(text: str) -> list[dict]:
 
 def _write_prompt_library(items: list[dict]) -> None:
     path = _pl_path()
-    _atomic_write(path, json.dumps(items, ensure_ascii=False, indent=2))
+    _atomic_write(path.parent, path, json.dumps(items, ensure_ascii=False, indent=2))
     _PL_CACHE.update({"stamp": _pl_stamp(), "items": items})
 
 
 def invalidate_prompt_cache() -> None:
-    """丢掉提示词库缓存 (改完设置指向别的库时调用)。"""
+    """丢掉提示词库缓存 (改完 data/library.json 指向别的库时调用)。"""
     _PL_CACHE.update({"stamp": None, "items": []})
 
 

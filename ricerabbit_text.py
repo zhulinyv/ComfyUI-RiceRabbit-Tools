@@ -20,6 +20,8 @@ import re
 import threading
 from pathlib import Path
 
+from ricerabbit_fs import safe_child
+
 # wildcard 标记: 只认 <分类:卡片>。分类与卡片名都不允许出现 < > 与换行。
 # 冒号两侧只容忍空格/制表符, 免得把跨行、正文带冒号的结构化提示词整段吃掉。
 _WILDCARD_TOKEN = re.compile(r"<[ \t]*([^:<>\r\n]+?)[ \t]*:[ \t]*([^<>\r\n]+?)[ \t]*>")
@@ -139,38 +141,8 @@ def join_prompt(text_input: str, prompt: str, separator: str = ",") -> str:
 # ---------------------------------------------------------------- wildcard
 
 
-def _safe_part(value: str) -> str | None:
-    """One path segment of a wildcard name; None when it could escape the root."""
-    name = (value or "").strip()
-    if not name or name in (".", ".."):
-        return None
-    if any(ch in name for ch in ("/", "\\", ":", "\x00")):
-        return None
-    return name
-
-
-def safe_child(root: Path, *parts: str) -> Path | None:
-    """Join parts under root, refusing anything that would step outside it.
-
-    Wildcard markers are user input (a prompt, or POST /ricerabbit/expand),
-    so both the category and the card name have to be treated as hostile:
-    reject separators and "..", then verify the resolved path is still a
-    descendant of the root.
-    """
-    cleaned = []
-    for part in parts:
-        value = _safe_part(part)
-        if value is None:
-            return None
-        cleaned.append(value)
-    try:
-        base = root.resolve()
-        path = base.joinpath(*cleaned).resolve()
-    except (OSError, ValueError):
-        return None
-    if path == base:
-        return path if not cleaned else None
-    return path if path.is_relative_to(base) else None
+# 路径拼接与包含检查在 ricerabbit_fs 里 (realpath + commonpath),
+# 这里的 category / card name 一律当作用户输入处理。
 
 
 def _list_cards(root: Path, category: str) -> list[str]:

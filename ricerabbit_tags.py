@@ -19,6 +19,7 @@ import threading
 import time
 from pathlib import Path
 
+from ricerabbit_fs import safe_child
 from ricerabbit_paths import tag_dict_candidates, wildcards_dir
 
 _LOCK = threading.RLock()
@@ -78,8 +79,9 @@ def _load_fallback_rows() -> list[tuple]:
     root = wildcards_dir()
     try:
         for category in sorted(os.listdir(root)) if root.is_dir() else []:
-            sub = root / category
-            if not sub.is_dir():
+            # 分类目录可能是指向库外的符号链接: 只认解析后仍在库根内的
+            sub = safe_child(root, category)
+            if sub is None or not sub.is_dir():
                 continue
             for f in sorted(os.listdir(sub)):
                 if not f.lower().endswith(".txt"):
