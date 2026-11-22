@@ -242,6 +242,7 @@ input3 = "best_quality" ┘
 ```
 
 - 三个键都可省略；`anr_root` 有效时读取它的 `data/state/wildcards` 与 `data/state/prompt_library.json`，标签词典与内置提示词库也一并复用。
+- JSON 里 Windows 反斜杠要写成两个（如示例），也可以直接用正斜杠：`"D:/cards"`。
 - 值是**允许使用的目录**（allow-list），不是任意路径：必须是绝对路径、不能是网络共享（`\\host\share`）、不能指向插件的 `data/`；ANR 目录必须已存在，另外两个目录不存在时会在第一次写入时创建。
 - 提示词库文件名固定为目录下的 `prompt_library.json`。
 - 卡片、封面、提示词的所有读写/改名/移动/删除，都会在 `realpath` 之后用 `commonpath` 确认仍在库根目录内；`..`、符号链接、目录联接都出不去。
