@@ -160,7 +160,12 @@ def prompt_library_dir() -> Path:
         except ValueError:
             candidate = None
         if candidate is not None and candidate.is_file():
-            return candidate.parent
+            # 返回解析后的 state 目录: 文件本身可能是库内的符号链接,
+            # 后面的 prompt_library_file() 会再解析到真正的文件
+            try:
+                return contain(root, root / "data" / "state")
+            except ValueError:
+                return DEFAULT_PROMPT_LIB_DIR
     custom = _validated_dir(_config().get("prompt_library_dir"), "prompt library folder", must_exist=False)
     if custom is not None:
         return custom
