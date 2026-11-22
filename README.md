@@ -248,6 +248,8 @@ input3 = "best_quality" ┘
 - 网络共享路径在碰文件系统之前就会被拒绝，避免在 Windows 上触发 SMB 认证。
 - 卡片与分类的删除仍然是移动到 `data/trash/`，不会真正删文件。
 
+> 从旧版本升级：之前在 ComfyUI 设置里填的 `RiceRabbit.ANRPath` / `RiceRabbit.WildcardsDir` / `RiceRabbit.PromptLibraryPath` 不再生效，设置面板里也不会再出现；把对应的值按上面的格式写进 `data/library.json` 即可，不写则用默认库。
+
 ### 卡片库结构（与 ANR 相同）
 
 ```
